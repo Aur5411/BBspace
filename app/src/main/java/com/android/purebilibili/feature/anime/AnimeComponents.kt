@@ -31,6 +31,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -195,24 +196,32 @@ fun AniSubjectCard(
                     }
                 }
             }
+            // 文字区固定高度：标题占满 2 行、副标题固定 1 行，
+            // 保证同一网格里所有卡片等高、行与行不错位。
+            val titleLineHeight = with(LocalDensity.current) {
+                MaterialTheme.typography.bodyMedium.lineHeight.toDp()
+            }
+            val subtitleLineHeight = with(LocalDensity.current) {
+                MaterialTheme.typography.labelSmall.lineHeight.toDp()
+            }
             Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)) {
                 AppText(
                     text = title,
+                    modifier = Modifier.height(titleLineHeight * 2),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-                if (!subtitle.isNullOrBlank()) {
-                    Spacer(Modifier.height(2.dp))
-                    AppText(
-                        text = subtitle,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
+                Spacer(Modifier.height(2.dp))
+                AppText(
+                    text = subtitle.orEmpty(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.height(subtitleLineHeight),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
     }
