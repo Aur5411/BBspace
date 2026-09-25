@@ -255,7 +255,8 @@ fun DynamicScreen(
     val likeOverrides by viewModel.likeOverrides.collectAsStateWithLifecycle()
     var showRepostDialog by remember { mutableStateOf<String?>(null) }  // 存储要转发的动态ID
     var showPublishDialog by remember { mutableStateOf(false) }
-    var dynamicTopActionsCollapsed by rememberSaveable { mutableStateOf(false) }
+    // BB空间：右上角操作区（布局菜单+发布按钮）默认收起
+    var dynamicTopActionsCollapsed by rememberSaveable { mutableStateOf(true) }
     var editingDynamicId by remember { mutableStateOf<String?>(null) }
     var editingDraft by remember {
         mutableStateOf(com.android.purebilibili.data.model.response.DynamicPublishDraft(text = ""))

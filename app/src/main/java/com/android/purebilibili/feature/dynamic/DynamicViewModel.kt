@@ -160,8 +160,8 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
     private val _showHiddenUsers = MutableStateFlow(false)
     val showHiddenUsers: StateFlow<Boolean> = _showHiddenUsers.asStateFlow()
 
-    //  [新增] 显示模式状态
-    private val _displayMode = MutableStateFlow(DynamicDisplayMode.SIDEBAR)
+    //  [新增] 显示模式状态（BB空间：默认「顶部横条」）
+    private val _displayMode = MutableStateFlow(DynamicDisplayMode.HORIZONTAL)
     val displayMode: StateFlow<DynamicDisplayMode> = _displayMode.asStateFlow()
 
     private val _selectedTab = MutableStateFlow(0)
@@ -214,12 +214,12 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
         _pinnedUserIds.value = pinned
         _hiddenUserIds.value = hidden
 
-        // 加载显示模式
-        val modeName = userPrefs.getString(KEY_DISPLAY_MODE, DynamicDisplayMode.SIDEBAR.name)
+        // 加载显示模式（BB空间：未配置时默认「顶部横条」）
+        val modeName = userPrefs.getString(KEY_DISPLAY_MODE, DynamicDisplayMode.HORIZONTAL.name)
         _displayMode.value = try {
-            DynamicDisplayMode.valueOf(modeName ?: DynamicDisplayMode.SIDEBAR.name)
+            DynamicDisplayMode.valueOf(modeName ?: DynamicDisplayMode.HORIZONTAL.name)
         } catch (e: Exception) {
-            DynamicDisplayMode.SIDEBAR
+            DynamicDisplayMode.HORIZONTAL
         }
         val savedSelectedTab = if (userPrefs.contains(KEY_SELECTED_TAB)) {
             userPrefs.getInt(KEY_SELECTED_TAB, 0)

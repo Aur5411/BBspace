@@ -106,7 +106,7 @@ fun DynamicTopBarWithTabs(
     tabs: List<String>,
     onTabSelected: (Int) -> Unit,
     modifier: Modifier = Modifier,
-    displayMode: DynamicDisplayMode = DynamicDisplayMode.SIDEBAR,
+    displayMode: DynamicDisplayMode = DynamicDisplayMode.HORIZONTAL,
     onDisplayModeChange: (DynamicDisplayMode) -> Unit = {},
     onPublishClick: (() -> Unit)? = null,
     actionDockCollapsed: Boolean = false,

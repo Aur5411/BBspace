@@ -138,10 +138,11 @@ fun ChatScreen(
         }
     }
     
-    // 滚动到底部
-    LaunchedEffect(uiState.messages.size) {
+    // 滚动到底部（有"加载更多"头部件时整体索引 +1）
+    LaunchedEffect(uiState.messages.size, uiState.hasMore) {
         if (uiState.messages.isNotEmpty()) {
-            listState.animateScrollToItem(uiState.messages.size - 1)
+            val lastIndex = uiState.messages.size - 1 + if (uiState.hasMore) 1 else 0
+            listState.animateScrollToItem(lastIndex)
         }
     }
 
@@ -266,7 +267,14 @@ fun ChatScreen(
                         LazyColumn(
                             state = listState,
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                            contentPadding = PaddingValues(
+                                start = 16.dp,
+                                end = 16.dp,
+                                top = 8.dp,
+                                // 底部留出输入栏高度（56dp 内容 + 16dp 边距 + 8dp 间隙），
+                                // 避免最后一条消息被悬浮输入框遮挡
+                                bottom = 80.dp,
+                            ),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             // 加载更多按钮

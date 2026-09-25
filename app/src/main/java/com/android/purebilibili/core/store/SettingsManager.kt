@@ -7166,11 +7166,22 @@ object SettingsManager {
             .filter { it.isNotBlank() && it in BBSPACE_BOTTOM_BAR_TABS }
         val visible = tabsString.split(",")
             .filter { it.isNotBlank() && it in BBSPACE_BOTTOM_BAR_TABS }
+        // BB空间：番剧是底栏常驻项（无论是否登录都显示）。
+        // 旧安装持久化的 tab 列表可能缺 ANIME，这里强制补回，
+        // 插在 PROFILE 之前（保持 HOME/DYNAMIC/ANIME/PROFILE 的默认次序），
+        // 避免主页底栏的番剧入口消失。
+        val resolvedTabs = resolveOrderedVisibleBottomTabs(order, visible)
+        val orderedVisibleTabIds = if ("ANIME" in resolvedTabs) {
+            resolvedTabs
+        } else {
+            val insertAt = resolvedTabs.indexOf("PROFILE").takeIf { it >= 0 } ?: resolvedTabs.size
+            resolvedTabs.toMutableList().apply { add(insertAt, "ANIME") }
+        }
         return AppNavigationSettings(
             bottomBarVisibilityMode = BottomBarVisibilityMode.fromValue(
                 preferences[KEY_BOTTOM_BAR_VISIBILITY_MODE] ?: BottomBarVisibilityMode.ALWAYS_VISIBLE.value
             ),
-            orderedVisibleTabIds = resolveOrderedVisibleBottomTabs(order, visible),
+            orderedVisibleTabIds = orderedVisibleTabIds,
             bottomBarItemColors = parseBottomBarItemColors(preferences[KEY_BOTTOM_BAR_ITEM_COLORS] ?: ""),
             bottomBarItemLabels = parseBottomBarItemLabels(
                 preferences[bottomBarItemLabelsPreferencesKey].orEmpty()
