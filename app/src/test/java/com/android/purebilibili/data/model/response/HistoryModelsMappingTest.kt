@@ -1,0 +1,111 @@
+package com.android.purebilibili.data.model.response
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class HistoryModelsMappingTest {
+
+    @Test
+    fun `toVideoItem keeps cid for multi page resume`() {
+        val data = HistoryData(
+            title = "t",
+            history = HistoryPage(
+                oid = 1L,
+                bvid = "BV1",
+                cid = 7788L,
+                page = 3,
+                business = "archive"
+            )
+        )
+
+        val item = data.toVideoItem()
+
+        assertEquals(7788L, item.cid)
+    }
+
+    @Test
+    fun `toHistoryItem keeps cid page and progress`() {
+        val data = HistoryData(
+            title = "t",
+            progress = 321,
+            history = HistoryPage(
+                oid = 1L,
+                bvid = "BV1",
+                cid = 7788L,
+                page = 3,
+                business = "archive"
+            )
+        )
+
+        val item = data.toHistoryItem()
+
+        assertEquals(7788L, item.cid)
+        assertEquals(3, item.page)
+        assertEquals(321, item.progress)
+    }
+
+    @Test
+    fun `article list history maps to article business with cover fallback and cvid target`() {
+        val data = HistoryData(
+            title = "article",
+            cover = "",
+            pic = "",
+            covers = listOf("https://i0.hdslb.com/bfs/article/cover.jpg"),
+            history = HistoryPage(
+                oid = 268656L,
+                bvid = "",
+                cid = 6233590L,
+                business = "article-list"
+            )
+        )
+
+        val item = data.toHistoryItem()
+
+        assertEquals(HistoryBusiness.ARTICLE, item.business)
+        assertEquals(6233590L, item.videoItem.id)
+        assertEquals("https://i0.hdslb.com/bfs/article/cover.jpg", item.videoItem.pic)
+    }
+
+    @Test
+    fun `pgc history keeps episode id and cid for playback resume`() {
+        val data = HistoryData(
+            title = "pgc",
+            progress = 66,
+            history = HistoryPage(
+                oid = 114514L,
+                epid = 1919810L,
+                cid = 223344L,
+                business = "pgc"
+            )
+        )
+
+        val item = data.toHistoryItem()
+
+        assertEquals(HistoryBusiness.PGC, item.business)
+        assertEquals(1919810L, item.epid)
+        assertEquals(223344L, item.cid)
+        assertEquals(66, item.progress)
+    }
+
+    @Test
+    fun `cheese history maps seasonId epid and cheese business`() {
+        val data = HistoryData(
+            title = "course",
+            progress = 120,
+            history = HistoryPage(
+                oid = 3344L,
+                epid = 7788L,
+                cid = 9900L,
+                business = "cheese"
+            )
+        )
+
+        val item = data.toHistoryItem()
+
+        assertEquals(HistoryBusiness.CHEESE, item.business)
+        assertEquals(3344L, item.seasonId)
+        assertEquals(7788L, item.epid)
+        assertEquals(9900L, item.cid)
+        assertEquals(120, item.progress)
+    }
+}

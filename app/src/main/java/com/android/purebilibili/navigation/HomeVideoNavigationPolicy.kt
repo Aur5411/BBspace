@@ -1,0 +1,80 @@
+package com.android.purebilibili.navigation
+
+import com.android.purebilibili.feature.home.HomeVideoClickRequest
+import com.android.purebilibili.feature.home.HomeVideoClickSource
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
+
+internal data class HomeVideoNavigationIntent(
+    val bvid: String,
+    val cid: Long,
+    val coverUrl: String,
+    val isVerticalVideo: Boolean,
+    val source: HomeVideoClickSource,
+    val sourceRoute: String?
+)
+
+internal sealed interface HomeNavigationTarget {
+    data class Video(val route: String) : HomeNavigationTarget
+    data class DynamicDetail(val dynamicId: String) : HomeNavigationTarget
+}
+
+internal fun resolveHomeVideoNavigationIntent(
+    request: HomeVideoClickRequest
+): HomeVideoNavigationIntent? {
+    val normalizedBvid = request.bvid.trim()
+    if (normalizedBvid.isEmpty()) return null
+
+    return HomeVideoNavigationIntent(
+        bvid = normalizedBvid,
+        cid = request.cid.takeIf { it > 0L } ?: 0L,
+        coverUrl = request.coverUrl,
+        isVerticalVideo = request.isVerticalVideo,
+        source = request.source,
+        sourceRoute = request.sourceRoute
+    )
+}
+
+/**
+ * Home → detail route.
+ *
+ * - [autoPortrait] / [initialVertical]: soft hints for shared-element geometry and inline
+ *   portrait layout. They do **not** force standalone immersive (see VideoDetailSessionPolicy).
+ * - Standalone / Story direct entry is owned by the 「竖屏直达」 setting at navigation time.
+ */
+internal fun resolveHomeVideoRoute(request: HomeVideoClickRequest): String? {
+    val intent = resolveHomeVideoNavigationIntent(request) ?: return null
+    val encodedCover = URLEncoder.encode(intent.coverUrl, StandardCharsets.UTF_8.toString())
+    return VideoRoute.resolveVideoRoutePath(
+        bvid = intent.bvid,
+        cid = intent.cid,
+        encodedCover = encodedCover,
+        startAudio = false,
+        autoPortrait = true,
+        fullscreen = false,
+        initialVertical = intent.isVerticalVideo
+    )
+}
+
+internal fun resolveHomeNavigationTarget(
+    request: HomeVideoClickRequest
+): HomeNavigationTarget? {
+    val normalizedDynamicId = request.dynamicId.trim()
+    val normalizedBvid = request.bvid.trim()
+
+    // 非 BV 的占位 bvid（例如动态卡片）优先走动态详情
+    if (normalizedDynamicId.isNotEmpty() && !normalizedBvid.startsWith("BV", ignoreCase = true)) {
+        return HomeNavigationTarget.DynamicDetail(normalizedDynamicId)
+    }
+
+    val videoRoute = resolveHomeVideoRoute(request)
+    if (videoRoute != null) {
+        return HomeNavigationTarget.Video(videoRoute)
+    }
+
+    if (normalizedDynamicId.isNotEmpty()) {
+        return HomeNavigationTarget.DynamicDetail(normalizedDynamicId)
+    }
+
+    return null
+}

@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 🎀 BiliPai 品牌色 (深色模式也使用相同品牌色) -->
+    <color name="bili_pink">#FB7299</color>
+    <color name="splash_background">#121212</color>
+    
+    <!-- 🌙 启动屏主题 (深色模式) - 使用深色背景 -->
+    <style name="Theme.PureBiliBili" parent="Theme.SplashScreen.IconBackground">
+        <!-- 🎨 Splash Screen 背景色 - 深色模式使用黑色 -->
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_no_icon</item>
+        <item name="windowSplashScreenIconBackgroundColor">@android:color/transparent</item>
+        <!-- ⏱️ 图标动画时长 -->
+        <item name="windowSplashScreenAnimationDuration">0</item>
+        <!-- 🔄 Splash 结束后的主题 -->
+        <item name="postSplashScreenTheme">@style/Theme.PureBiliBili.Main</item>
+    </style>
+
+    <style name="Theme.PureBiliBili.Splash.BlueSnowMaid" parent="Theme.PureBiliBili">
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_no_icon</item>
+    </style>
+
+    <style name="Theme.PureBiliBili.Splash.BlueSnowMaidAnnouncement" parent="Theme.PureBiliBili">
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_no_icon</item>
+    </style>
+
+    <style name="Theme.PureBiliBili.Splash.BlueSnowMaidAnnouncementLight" parent="Theme.PureBiliBili">
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_no_icon</item>
+    </style>
+
+    <style name="Theme.PureBiliBili.Splash.BlueSnowMaidAnnouncementDark" parent="Theme.PureBiliBili">
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_no_icon</item>
+    </style>
+
+    <style name="Theme.PureBiliBili.Splash.BlueSnowMaidFront" parent="Theme.PureBiliBili">
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_no_icon</item>
+    </style>
+
+    <style name="Theme.PureBiliBili.Splash.BlueSnowMaidLight" parent="Theme.PureBiliBili">
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_no_icon</item>
+    </style>
+
+    <style name="Theme.PureBiliBili.Splash.BlueSnowMaidDark" parent="Theme.PureBiliBili">
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_no_icon</item>
+    </style>
+
+    <style name="Theme.PureBiliBili.Splash.BlueSnowMaidFrontLight" parent="Theme.PureBiliBili">
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_no_icon</item>
+    </style>
+
+    <style name="Theme.PureBiliBili.Splash.BlueSnowMaidFrontDark" parent="Theme.PureBiliBili">
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_no_icon</item>
+    </style>
+
+    <style name="Theme.PureBiliBili.Splash.Icon3D" parent="Theme.PureBiliBili">
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_no_icon</item>
+    </style>
+
+    <style name="Theme.PureBiliBili.Splash.BiliPai" parent="Theme.PureBiliBili">
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_no_icon</item>
+    </style>
+
+    <style name="Theme.PureBiliBili.Splash.BiliPaiPink" parent="Theme.PureBiliBili">
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_no_icon</item>
+    </style>
+
+    <style name="Theme.PureBiliBili.Splash.BiliPaiWhite" parent="Theme.PureBiliBili">
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_no_icon</item>
+    </style>
+
+    <style name="Theme.PureBiliBili.Splash.BiliPaiMonet" parent="Theme.PureBiliBili">
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_no_icon</item>
+    </style>
+
+    <style name="Theme.PureBiliBili.Splash.NoIcon" parent="Theme.PureBiliBili">
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_no_icon</item>
+        <item name="windowSplashScreenIconBackgroundColor">@android:color/transparent</item>
+        <item name="windowSplashScreenAnimationDuration">0</item>
+    </style>
+    
+    <!-- 主应用主题 (深色模式) -->
+    <style name="Theme.PureBiliBili.Main" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:windowBackground">@color/splash_background</item>
+        <item name="android:colorBackground">@color/splash_background</item>
+        <item name="android:navigationBarColor">@color/splash_background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+    </style>
+
+    <!-- 兼容旧主题名 -->
+    <style name="Theme.Purebilibili" parent="Theme.PureBiliBili" />
+</resources>

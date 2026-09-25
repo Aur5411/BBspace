@@ -1,0 +1,170 @@
+package com.android.purebilibili.feature.list
+
+import com.android.purebilibili.data.model.response.HistoryBusiness
+import com.android.purebilibili.data.model.response.HistoryItem
+
+internal enum class HistoryDeleteAnimationMode {
+    SINGLE_DISSOLVE,
+    DIRECT_DELETE
+}
+
+/**
+ * MIUI 14 on Android 13 can crash in the native EGL/GL driver when a temporary transparent
+ * GLSurfaceView is mounted for the history-card dissolve effect. Keep deletion functional on
+ * affected devices by skipping that optional animation.
+ */
+internal fun isHistoryDissolveAnimationSafe(
+    sdkInt: Int,
+    manufacturer: String
+): Boolean {
+    return sdkInt != 33 || !manufacturer.equals("xiaomi", ignoreCase = true)
+}
+
+internal data class HistoryDeleteSession(
+    val targetKeys: Set<String>,
+    val completedKeys: Set<String>,
+    val animationMode: HistoryDeleteAnimationMode
+)
+
+internal fun resolveHistoryRenderKey(item: HistoryItem): String {
+    val bvid = item.videoItem.bvid.trim()
+    if (bvid.isNotEmpty()) return bvid
+
+    val fallbackId = when (item.business) {
+        HistoryBusiness.ARCHIVE -> item.videoItem.id
+        HistoryBusiness.PGC -> item.seasonId.takeIf { it > 0L } ?: item.videoItem.id
+        HistoryBusiness.CHEESE -> item.seasonId.takeIf { it > 0L } ?: item.videoItem.id
+        HistoryBusiness.LIVE -> item.roomId.takeIf { it > 0L } ?: item.videoItem.id
+        HistoryBusiness.ARTICLE -> item.videoItem.id
+        HistoryBusiness.UNKNOWN -> item.videoItem.id
+    }
+    val businessTag = item.business.value.ifBlank { "unknown" }
+    return "${businessTag}_${fallbackId.coerceAtLeast(0L)}"
+}
+
+internal fun resolveHistoryLookupKey(item: HistoryItem): String {
+    val bvid = item.videoItem.bvid.trim()
+    if (bvid.isNotEmpty()) return bvid
+    return resolveHistoryRenderKey(item)
+}
+
+internal fun resolveHistoryDeleteKid(item: HistoryItem): String? {
+    val prefixAndId = when (item.business) {
+        HistoryBusiness.ARCHIVE -> "archive" to item.videoItem.id
+        HistoryBusiness.PGC -> "pgc" to item.seasonId
+        HistoryBusiness.CHEESE -> "cheese" to (item.seasonId.takeIf { it > 0L } ?: item.videoItem.id)
+        HistoryBusiness.LIVE -> "live" to item.roomId
+        HistoryBusiness.ARTICLE -> "article" to item.videoItem.id
+        HistoryBusiness.UNKNOWN -> {
+            if (item.videoItem.bvid.isNotBlank()) {
+                "archive" to item.videoItem.id
+            } else {
+                null
+            }
+        }
+    } ?: return null
+
+    val (prefix, targetId) = prefixAndId
+    if (targetId <= 0L) return null
+    return "${prefix}_${targetId}"
+}
+
+internal fun resolveHistoryDeleteAnimationMode(
+    itemCount: Int,
+    dissolveAnimationSafe: Boolean = true
+): HistoryDeleteAnimationMode {
+    return if (itemCount <= 1 && dissolveAnimationSafe) {
+        HistoryDeleteAnimationMode.SINGLE_DISSOLVE
+    } else {
+        HistoryDeleteAnimationMode.DIRECT_DELETE
+    }
+}
+
+internal fun resolveDeleteBatchParallelism(itemCount: Int): Int {
+    return when {
+        itemCount >= 24 -> 4
+        itemCount >= 8 -> 3
+        itemCount >= 2 -> 2
+        else -> 1
+    }
+}
+
+internal fun createHistoryDeleteSession(
+    targetKeys: Set<String>,
+    dissolveAnimationSafe: Boolean = true
+): HistoryDeleteSession? {
+    val normalizedKeys = targetKeys.map(String::trim).filter(String::isNotEmpty).toSet()
+    if (normalizedKeys.isEmpty()) return null
+    return HistoryDeleteSession(
+        targetKeys = normalizedKeys,
+        completedKeys = emptySet(),
+        animationMode = resolveHistoryDeleteAnimationMode(
+            itemCount = normalizedKeys.size,
+            dissolveAnimationSafe = dissolveAnimationSafe
+        )
+    )
+}
+
+internal fun shouldJiggleHistoryDeleteCards(
+    animationMode: HistoryDeleteAnimationMode
+): Boolean {
+    return animationMode == HistoryDeleteAnimationMode.SINGLE_DISSOLVE
+}
+
+internal fun shouldCollapseHistoryDeleteCard(
+    animationMode: HistoryDeleteAnimationMode
+): Boolean {
+    return animationMode == HistoryDeleteAnimationMode.SINGLE_DISSOLVE
+}
+
+internal fun shouldFinalizeBatchHistoryDelete(
+    targetKeys: Set<String>,
+    completedKeys: Set<String>
+): Boolean {
+    return targetKeys.isNotEmpty() && completedKeys.containsAll(targetKeys)
+}
+
+internal fun reduceHistoryDeleteSessionOnAnimationComplete(
+    session: HistoryDeleteSession,
+    completedKey: String
+): HistoryDeleteSession {
+    val normalizedKey = completedKey.trim()
+    if (normalizedKey.isEmpty() || normalizedKey !in session.targetKeys) return session
+    return session.copy(completedKeys = session.completedKeys + normalizedKey)
+}
+
+internal fun resolveActiveHistoryDeleteKeys(
+    session: HistoryDeleteSession?
+): Set<String> {
+    return session?.targetKeys?.minus(session.completedKeys).orEmpty()
+}
+
+internal fun shouldKeepHistoryDeletePlaceholderHidden(
+    session: HistoryDeleteSession?,
+    key: String
+): Boolean {
+    val normalizedKey = key.trim()
+    if (normalizedKey.isEmpty()) return false
+    return session != null && normalizedKey in session.completedKeys
+}
+
+internal fun shouldFinalizeHistoryDeleteSession(
+    session: HistoryDeleteSession
+): Boolean {
+    return shouldFinalizeBatchHistoryDelete(
+        targetKeys = session.targetKeys,
+        completedKeys = session.completedKeys
+    )
+}
+
+internal fun resolveHistoryPauseActionLabel(isHistoryPaused: Boolean): String {
+    return if (isHistoryPaused) "继续记录" else "暂停记录"
+}
+
+internal fun resolveHistoryPauseSuccessMessage(nextPaused: Boolean): String {
+    return if (nextPaused) "已暂停历史记录" else "已继续记录历史"
+}
+
+internal fun resolveHistoryClearConfirmText(visibleCount: Int): String {
+    return "确认清空全部历史记录吗？当前仅显示 $visibleCount 条，本操作会清空账号全部历史。"
+}

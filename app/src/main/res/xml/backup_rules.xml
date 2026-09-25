@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+   Sample backup rules file; uncomment and customize as necessary.
+   See https://developer.android.com/guide/topics/data/autobackup
+   for details.
+   Note: This file is ignored for devices older than API 31
+   See https://developer.android.com/about/versions/12/backup-restore
+-->
+<full-backup-content>
+    <exclude domain="file" path="logs/" />
+    <exclude domain="sharedpref" path="startup_recovery.xml" />
+    <exclude domain="file" path="android17_profiles/" />
+    <exclude domain="file" path="profiling/" />
+    <!-- Session cookies/tokens must never enter Auto Backup. -->
+    <exclude domain="sharedpref" path="token_backup_sp.xml" />
+    <exclude domain="sharedpref" path="multi_account_sessions.xml" />
+    <exclude domain="file" path="datastore/user_prefs.preferences_pb" />
+    <!--
+   <include domain="sharedpref" path="."/>
+   <exclude domain="sharedpref" path="device.xml"/>
+-->
+</full-backup-content>

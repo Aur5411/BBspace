@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- 单个大写字母 B（粗体几何造型，居中，位于 66dp 安全区内） -->
+    <!-- 竖笔 -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M36,26h7v56h-7z" />
+    <!-- 上碗 -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M43,26h13c9,0 15,5.6 15,13.4c0,5.6 -3.1,9.9 -7.9,11.8v0.4c6.2,1.6 10.1,6.2 10.1,12.6c0,8.9 -6.7,14.8 -17,14.8H43V26zM50,33.4v17.1h5.4c5.2,0 8.3,-3.1 8.3,-8.6c0,-5.4 -3.1,-8.5 -8.3,-8.5H50zM50,58v17.8h6.6c6.1,0 9.7,-3.4 9.7,-8.9c0,-5.6 -3.6,-8.9 -9.9,-8.9H50z" />
+
+    <!-- B 右侧两个镂空装饰点（呼应 B 站两撇） -->
+    <path
+        android:fillColor="#FFF7C9D7"
+        android:pathData="M84,44m-3.6,0a3.6,3.6 0 1,0 7.2,0a3.6,3.6 0 1,0 -7.2,0" />
+    <path
+        android:fillColor="#FFF7C9D7"
+        android:pathData="M84,66m-3.6,0a3.6,3.6 0 1,0 7.2,0a3.6,3.6 0 1,0 -7.2,0" />
+</vector>

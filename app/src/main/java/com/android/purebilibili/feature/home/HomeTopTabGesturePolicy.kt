@@ -1,0 +1,56 @@
+package com.android.purebilibili.feature.home
+
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+
+internal enum class HomeTopTabGestureAction {
+    NONE,
+    COLLAPSE,
+    EXPAND
+}
+
+internal fun resolveHomeTopTabGestureAction(
+    dragDeltaPx: Float,
+    isCollapsed: Boolean,
+    thresholdPx: Float
+): HomeTopTabGestureAction {
+    if (thresholdPx <= 0f) return HomeTopTabGestureAction.NONE
+    return when {
+        !isCollapsed && dragDeltaPx >= thresholdPx -> HomeTopTabGestureAction.COLLAPSE
+        isCollapsed && dragDeltaPx <= -thresholdPx -> HomeTopTabGestureAction.EXPAND
+        else -> HomeTopTabGestureAction.NONE
+    }
+}
+
+internal fun resolveHomeTopCollapsedHandleHeight(): Dp = 12.dp
+
+internal fun resolveHomeTopTabsAutoCollapsed(
+    currentHeaderOffsetPx: Float,
+    isTopTabAutoCollapseEnabled: Boolean,
+    collapseThresholdPx: Float = 0.5f
+): Boolean {
+    if (!isTopTabAutoCollapseEnabled) return false
+    return currentHeaderOffsetPx <= -collapseThresholdPx
+}
+
+internal fun reduceHomeTopTabsAutoCollapseState(
+    isCollapsed: Boolean,
+    scrollDeltaY: Float,
+    isTopTabAutoCollapseEnabled: Boolean,
+    minimumScrollDeltaPx: Float = 0.5f
+): Boolean {
+    if (!isTopTabAutoCollapseEnabled) return false
+    return when {
+        scrollDeltaY <= -minimumScrollDeltaPx -> true
+        scrollDeltaY >= minimumScrollDeltaPx -> false
+        else -> isCollapsed
+    }
+}
+
+internal fun resolveHomeTopTabPresentationHeight(
+    expandedHeight: Dp,
+    isCollapsed: Boolean,
+    collapsedHandleHeight: Dp = resolveHomeTopCollapsedHandleHeight()
+): Dp {
+    return if (isCollapsed) collapsedHandleHeight else expandedHeight
+}

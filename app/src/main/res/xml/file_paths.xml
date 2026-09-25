@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- 日志缓存目录 -->
+    <cache-path
+        name="logs"
+        path="logs/" />
+
+    <!-- 应用内更新 APK 缓存目录 -->
+    <cache-path
+        name="app_update"
+        path="app_update/" />
+
+    <!-- 图片预览分享缓存目录 -->
+    <cache-path
+        name="shared_images"
+        path="shared_images/" />
+    
+    <!-- 外部 Download 目录（用于日志导出） -->
+    <external-path
+        name="external_downloads"
+        path="Download/BiliPai/" />
+</paths>
