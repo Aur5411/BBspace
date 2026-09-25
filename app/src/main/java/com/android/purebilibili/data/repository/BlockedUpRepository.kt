@@ -181,7 +181,7 @@ internal fun buildBlockedUpMetadataRefreshMessage(
 
 fun buildBlockedUpShareText(blockedUps: List<BlockedUp>): String {
     if (blockedUps.isEmpty()) {
-        return "BiliPai 黑名单导出\n暂无黑名单用户\n\n$BLOCKED_UP_SHARE_MARKER\n${buildBlockedUpShareJson(blockedUps)}"
+        return "BBspace 黑名单导出\n暂无黑名单用户\n\n$BLOCKED_UP_SHARE_MARKER\n${buildBlockedUpShareJson(blockedUps)}"
     }
 
     val body = blockedUps.mapIndexed { index, up ->
@@ -203,7 +203,7 @@ fun buildBlockedUpShareText(blockedUps: List<BlockedUp>): String {
         }
     }.joinToString(separator = "\n\n")
 
-    return "BiliPai 黑名单导出（${blockedUps.size} 个用户）\n\n$body\n\n$BLOCKED_UP_SHARE_MARKER\n" +
+    return "BBspace 黑名单导出（${blockedUps.size} 个用户）\n\n$body\n\n$BLOCKED_UP_SHARE_MARKER\n" +
         buildBlockedUpShareJson(blockedUps)
 }
 

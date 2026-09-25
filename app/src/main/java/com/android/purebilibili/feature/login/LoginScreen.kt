@@ -388,7 +388,7 @@ internal fun LoginPage(
 @Composable
 private fun LoginHeader(modifier: Modifier = Modifier) {
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        AppText(text = "登录 BiliPai", style = MaterialTheme.typography.headlineMedium)
+        AppText(text = "登录 BBspace", style = MaterialTheme.typography.headlineMedium)
         AppText(
             text = "选择一种方式继续，你的观看进度和账号信息会同步到当前设备。",
             style = MaterialTheme.typography.bodyMedium,
@@ -422,7 +422,7 @@ private fun loginMethodLabel(method: LoginMethod): String = when (method) {
     LoginMethod.PASSWORD -> "密码登录"
     LoginMethod.SMS -> "手机号登录"
     LoginMethod.COOKIE_IMPORT -> "Cookie 导入"
-    LoginMethod.BILIPAI_TRANSFER -> "BiliPai 传输"
+    LoginMethod.BILIPAI_TRANSFER -> "BBspace 传输"
 }
 
 @Composable
@@ -445,7 +445,7 @@ private fun LoginStateMessage(state: LoginState, modifier: Modifier = Modifier) 
 private fun BiliPaiTransferEntry(onOpen: () -> Unit) {
     AppCard(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            AppText("在两台 BiliPai 设备之间加密迁移登录会话", style = MaterialTheme.typography.titleMedium)
+            AppText("在两台 BBspace 设备之间加密迁移登录会话", style = MaterialTheme.typography.titleMedium)
             AppText("Cookie 只在设备端加密和解密，不经过服务器。", color = MaterialTheme.colorScheme.onSurfaceVariant)
             AppButton(onClick = onOpen, modifier = Modifier.fillMaxWidth()) { AppText("开始传输") }
         }
@@ -524,7 +524,7 @@ private fun BiliPaiTransferDialog(onDismiss: () -> Unit) {
     }
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
-        title = { AppText("BiliPai 安全传输") },
+        title = { AppText("BBspace 安全传输") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -535,7 +535,7 @@ private fun BiliPaiTransferDialog(onDismiss: () -> Unit) {
                 qrText?.let { value ->
                     val bitmap = remember(value) { runCatching { transferQrBitmap(value) }.getOrNull() }
                     if (bitmap != null) {
-                        Image(bitmap = bitmap.asImageBitmap(), contentDescription = "BiliPai 传输二维码", modifier = Modifier.size(220.dp))
+                        Image(bitmap = bitmap.asImageBitmap(), contentDescription = "BBspace 传输二维码", modifier = Modifier.size(220.dp))
                     } else {
                         AppText(
                             "加密会话过大，无法通过单个二维码传输。请改用 Cookie 导入或其他登录方式。",

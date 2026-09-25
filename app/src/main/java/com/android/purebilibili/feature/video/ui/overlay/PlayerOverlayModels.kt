@@ -305,7 +305,7 @@ internal fun buildPlaybackDiagnosticReport(
     val debugRows = resolvePlaybackDebugRows(debugInfo)
 
     return buildString {
-        appendLine("BiliPai Player Diagnostics")
+        appendLine("BBspace Player Diagnostics")
         appendLine("Generated at: $generatedAt")
         if (title.isNotBlank()) appendLine("Title: $title")
         if (bvid.isNotBlank()) appendLine("BVID: $bvid")

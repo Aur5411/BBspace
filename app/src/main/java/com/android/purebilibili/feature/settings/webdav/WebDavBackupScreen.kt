@@ -310,7 +310,7 @@ fun WebDavBackupScreen(
                                 value = draftRemoteDir,
                                 onValueChange = { draftRemoteDir = it },
                                 label = "远端目录",
-                                placeholder = "/BiliPai/backups",
+                                placeholder = "/BBspace/backups",
                                 singleLine = true
                             )
                             Row(

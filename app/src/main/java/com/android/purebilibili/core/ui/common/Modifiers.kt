@@ -64,7 +64,7 @@ fun rememberClipboardCopyHandler(): (String, String?) -> Unit {
             val text = rawText.trim()
             if (text.isNotEmpty()) {
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                copyPlainTextToClipboard(context, text, label ?: "BiliPai")
+                copyPlainTextToClipboard(context, text, label ?: "BBspace")
                 val toastMsg = if (label != null) "已复制 $label" else "已复制到剪贴板"
                 if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.S_V2) {
                     Toast.makeText(context, toastMsg, Toast.LENGTH_SHORT).show()

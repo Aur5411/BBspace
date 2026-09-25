@@ -182,7 +182,7 @@ suspend fun saveScreenshotToGallery(
         put(MediaStore.Images.Media.MIME_TYPE, "image/png")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             put(MediaStore.Images.Media.IS_PENDING, 1)
-            put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/BiliPai/Screenshots")
+            put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/BBspace/Screenshots")
         }
     }
 

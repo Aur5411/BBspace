@@ -43,7 +43,7 @@ data class SettingsShareDeviceDebugInfo(
 @Serializable
 data class SettingsShareProfile(
     val schemaVersion: Int = SETTINGS_SHARE_SCHEMA_VERSION,
-    val app: String = "BiliPai",
+    val app: String = "BBspace",
     val appVersion: String,
     val exportedAtIso: String,
     val profileName: String,

@@ -359,14 +359,14 @@ fun BrandingHeader(isSmall: Boolean = false) {
                     .data(com.android.purebilibili.R.mipmap.ic_launcher_3d)
                     .crossfade(true)
                     .build(),
-                contentDescription = "BiliPai",
+                contentDescription = "BBspace",
                 modifier = Modifier.fillMaxSize()
             )
         }
 
         Spacer(modifier = Modifier.height(AppSpacingTokens.Large))
         AppText(
-            text = "BiliPai 登录",
+            text = "BBspace 登录",
             color = palette.primaryText,
             style = if (isSmall) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold

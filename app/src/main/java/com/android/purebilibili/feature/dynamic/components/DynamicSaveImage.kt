@@ -53,7 +53,7 @@ suspend fun saveDynamicImageToGallery(context: Context, item: DynamicItem): Bool
             saveDynamicBitmap(
                 context = context,
                 bitmap = bitmap,
-                fileName = "BiliPai_dynamic_${item.id_str}_${System.currentTimeMillis()}.png",
+                fileName = "BBspace_dynamic_${item.id_str}_${System.currentTimeMillis()}.png",
             )
         } catch (error: CancellationException) {
             throw error
@@ -120,7 +120,7 @@ private fun renderDynamicSaveImage(spec: DynamicSaveImageSpec): Bitmap {
     val qr = generateDynamicQr(spec.dynamicUrl, qrSize)
     canvas.drawBitmap(qr, width - horizontalPadding - qrSize, footerTop + 28f, null)
     canvas.drawText("识别二维码，查看动态", horizontalPadding, footerTop + 76f, bodyPaint.apply { textSize = 31f })
-    canvas.drawText("BiliPai · ${spec.generatedAt}", horizontalPadding, footerTop + 120f, metaPaint)
+    canvas.drawText("BBspace · ${spec.generatedAt}", horizontalPadding, footerTop + 120f, metaPaint)
     canvas.drawText(spec.dynamicUrl, horizontalPadding, footerTop + 162f, metaPaint)
     return bitmap
 }

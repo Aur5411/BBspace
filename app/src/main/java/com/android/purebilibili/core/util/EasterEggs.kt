@@ -188,7 +188,7 @@ object EasterEggs {
     // 🔍 搜索彩蛋关键词
     // ═══════════════════════════════════════════════════
     private val searchEasterEggs = mapOf(
-        "bilipai" to "欢迎使用 BiliPai！感谢你的支持 ",
+        "bilipai" to "欢迎使用 BBspace！感谢你的支持 ",
         "开发者" to "开发者正在努力搬砖中... 🧱",
         "彩蛋" to "恭喜你找到了彩蛋！",
         "感谢" to "不用谢，应该的！😊",

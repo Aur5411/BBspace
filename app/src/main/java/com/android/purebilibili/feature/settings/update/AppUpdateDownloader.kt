@@ -23,7 +23,7 @@ internal suspend fun downloadAppUpdateApk(
         onStateChange(state)
 
         val updateDir = resolveAppUpdateCacheDir(context.cacheDir).apply { mkdirs() }
-        val outputFile = File(updateDir, sanitizeAppUpdateFileName(asset.name.ifBlank { "BiliPai-update.apk" }))
+        val outputFile = File(updateDir, sanitizeAppUpdateFileName(asset.name.ifBlank { "BBspace-update.apk" }))
 
         val connection = (URL(asset.downloadUrl).openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"

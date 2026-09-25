@@ -259,7 +259,7 @@ private fun CacheClearUsageDonut(
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             AppText(
-                text = "BiliPai",
+                text = "BBspace",
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

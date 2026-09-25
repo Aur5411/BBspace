@@ -959,7 +959,7 @@ object DownloadManager {
                 put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
                     put(android.provider.MediaStore.Images.Media.IS_PENDING, 1)
-                    put(android.provider.MediaStore.Images.Media.RELATIVE_PATH, "Pictures/BiliPai")
+                    put(android.provider.MediaStore.Images.Media.RELATIVE_PATH, "Pictures/BBspace")
                 }
             }
             

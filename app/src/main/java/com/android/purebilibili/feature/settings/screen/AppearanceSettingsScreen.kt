@@ -1065,8 +1065,8 @@ fun AppearanceSettingsContent(
                             "Blue Snow Maid Front", "蓝雪女仆·正面", "icon_blue_snow_maid_front" -> "蓝雪女仆·正面"
                             // 🎀 二次元少女系列
                             "BiliPai", "icon_bilipai" -> "BiliPai"
-                            "BiliPai Pink", "icon_bilipai_pink" -> "BiliPai 粉"
-                            "BiliPai White", "icon_bilipai_white" -> "BiliPai 白"
+                            "BiliPai Pink", "icon_bilipai_pink" -> "BBspace 粉"
+                            "BiliPai White", "icon_bilipai_white" -> "BBspace 白"
                             "BiliPai Monet", "icon_bilipai_monet" -> "BiliPai Monet"
                             "Yuki" -> "比心少女"
                             "Anime", "icon_anime" -> "蓝发电视"

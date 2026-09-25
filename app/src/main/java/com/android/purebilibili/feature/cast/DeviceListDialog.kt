@@ -228,7 +228,7 @@ fun DeviceListDialog(
                         AppText(
                             "排查建议：\n" +
                                 "1. 手机与电视/盒子同一 Wi‑Fi（勿用访客网络/AP 隔离）\n" +
-                                "2. 系统设置中允许 BiliPai「附近设备/本地网络」权限\n" +
+                                "2. 系统设置中允许 BBspace「附近设备/本地网络」权限\n" +
                                 "3. 关闭 VPN；双卡手机请确认流量未抢走局域网\n" +
                                 "4. DLNA 需接收端开启 DLNA/UPnP（CastFlow 选 DLNA 接收）\n" +
                                 "5. 小米自带投屏多为 Miracast，不一定支持 DLNA\n" +

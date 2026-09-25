@@ -262,7 +262,7 @@ fun SettingsShareScreen(
                     AppPreference(
                         icon = com.android.purebilibili.feature.settings.rememberMaterialSymbol(com.android.purebilibili.R.drawable.ms_data_object_fill_24),
                         title = "设置包（JSON）",
-                        subtitle = "通用文本格式，可直接查看，也可在 BiliPai 中导入",
+                        subtitle = "通用文本格式，可直接查看，也可在 BBspace 中导入",
                         value = "格式版本 v$SETTINGS_SHARE_SCHEMA_VERSION",
                         onClick = null,
                         iconTint = iOSOrange,

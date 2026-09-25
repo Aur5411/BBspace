@@ -2265,7 +2265,7 @@ private fun AboutProjectOverviewCard(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 AsyncImage(
                     model = appIconRes,
-                    contentDescription = "BiliPai 图标",
+                    contentDescription = "BBspace 图标",
                     modifier = Modifier
                         .size(72.dp)
                         .clip(CircleShape)
@@ -2273,7 +2273,7 @@ private fun AboutProjectOverviewCard(
                 Spacer(modifier = Modifier.width(16.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     AppText(
-                        text = "BiliPai",
+                        text = "BBspace",
                         style = MaterialTheme.typography.headlineSmall,
                         color = MaterialTheme.colorScheme.onSurface
                     )

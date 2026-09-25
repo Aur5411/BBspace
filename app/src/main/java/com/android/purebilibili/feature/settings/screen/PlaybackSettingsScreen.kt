@@ -2405,7 +2405,7 @@ private fun PlaybackFullscreenGestureSettingsSection(
 	        AppSwitchPreference(
 	            icon = rememberSettingsSemanticIcon(SettingsIconRole.CLEAN_SCREENSHOT),
             title = "应用内干净截图",
-            subtitle = "在 BiliPai 前台通过应用内手势导出当前窗口 PNG",
+            subtitle = "在 BBspace 前台通过应用内手势导出当前窗口 PNG",
             checked = appGestureScreenshotEnabled,
             onCheckedChange = {
                 scope.launch {

@@ -51,7 +51,7 @@ object BiliPaiTransferCodec {
 
     fun decodeRequest(raw: String, now: Long = System.currentTimeMillis()): BiliPaiTransferRequest {
         require(raw.length <= MAX_QR_CHARS) { "二维码内容过大" }
-        require(raw.startsWith("bilipai://transfer/request?payload=")) { "不是 BiliPai 传输二维码" }
+        require(raw.startsWith("bilipai://transfer/request?payload=")) { "不是 BBspace 传输二维码" }
         val request = json.decodeFromString(
             BiliPaiTransferRequest.serializer(), decode(raw.substringAfter("payload=")))
         require(request.version == 1 && request.transferId.isNotBlank()) { "传输请求版本无效" }
@@ -67,7 +67,7 @@ object BiliPaiTransferCodec {
 
     fun decodeEnvelope(raw: String): BiliPaiTransferEnvelope {
         require(raw.length <= MAX_QR_CHARS) { "二维码内容过大" }
-        require(raw.startsWith("bilipai://transfer/envelope?payload=")) { "不是 BiliPai 加密传输二维码" }
+        require(raw.startsWith("bilipai://transfer/envelope?payload=")) { "不是 BBspace 加密传输二维码" }
         return json.decodeFromString(
             BiliPaiTransferEnvelope.serializer(), decode(raw.substringAfter("payload=")))
     }

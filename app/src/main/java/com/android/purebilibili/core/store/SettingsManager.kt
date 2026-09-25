@@ -601,13 +601,13 @@ enum class BottomBarLiquidGlassPreset(
 ) {
     BILIPAI_TUNED(
         0,
-        "BiliPai 调校",
+        "BBspace 调校",
         "保留当前多层折射、色散和指示器动效"
     ),
     IOS26_REFINED(
         1,
         "iOS 26 玻璃",
-        "厚边折射 + 顶光高亮环，无色散，沿用 BiliPai 指示器滑动与配色"
+        "厚边折射 + 顶光高亮环，无色散，沿用 BBspace 指示器滑动与配色"
     );
 
     companion object {

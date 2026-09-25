@@ -124,7 +124,7 @@ internal fun buildCrashSnapshotContent(
     val headerDateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.getDefault())
     return buildString {
         appendLine("========================================")
-        appendLine("BiliPai 崩溃日志快照")
+        appendLine("BBspace 崩溃日志快照")
         appendLine("========================================")
         appendLine("生成时间: ${headerDateFormat.format(Date(exportedAtMillis))}")
         appendLine("应用版本: $appVersionName ($versionCode)")
@@ -815,7 +815,7 @@ object LogCollector {
                     return@execute
                 }
                 val content = buildString {
-                    appendLine("BiliPai 应用日志导出")
+                    appendLine("BBspace 应用日志导出")
                     appendLine("导出时间: ${dateFormat.format(Date())}")
                     appendLine("应用版本: ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
                     appendLine("构建: ${BuildConfig.BUILD_TYPE} / ${BuildConfig.BUILD_COMMIT_SHA}")
@@ -919,7 +919,7 @@ object LogCollector {
                 val downloadDir = android.os.Environment.getExternalStoragePublicDirectory(
                     android.os.Environment.DIRECTORY_DOWNLOADS
                 )
-                val logDir = File(downloadDir, "BiliPai/logs")
+                val logDir = File(downloadDir, "BBspace/logs")
                 logDir.mkdirs()
                 val logFile = File(logDir, fileName)
                 logFile.writeText(content)
@@ -989,7 +989,7 @@ object LogCollector {
                 } else {
                     putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
                 }
-                putExtra(Intent.EXTRA_SUBJECT, "BiliPai 日志反馈")
+                putExtra(Intent.EXTRA_SUBJECT, "BBspace 日志反馈")
                 putExtra(
                     Intent.EXTRA_TEXT,
                     if (uris.size == 1) "请查看附件中的日志文件"

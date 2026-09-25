@@ -7,7 +7,7 @@ import android.content.Context
 internal fun copyPlainTextToClipboard(
     context: Context,
     text: String,
-    label: String = "BiliPai"
+    label: String = "BBspace"
 ) {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     clipboard.setPrimaryClip(ClipData.newPlainText(label, text))

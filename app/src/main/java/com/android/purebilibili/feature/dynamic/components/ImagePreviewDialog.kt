@@ -1871,7 +1871,7 @@ suspend fun shareImageFromPreview(context: Context, imageUrl: String): Boolean {
             val sendIntent = Intent(Intent.ACTION_SEND).apply {
                 type = mimeType
                 putExtra(Intent.EXTRA_STREAM, uri)
-                clipData = ClipData.newUri(context.contentResolver, "BiliPai image", uri)
+                clipData = ClipData.newUri(context.contentResolver, "BBspace image", uri)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
             val chooser = Intent.createChooser(sendIntent, "分享图片").apply {
@@ -1899,7 +1899,7 @@ private fun createImagePreviewShareFile(
         val cacheDir = File(context.cacheDir, "shared_images").apply { mkdirs() }
         cleanupImagePreviewShareCache(cacheDir)
         val extension = resolveImageShareExtension(mimeType)
-        val outputFile = File(cacheDir, "BiliPai_${System.currentTimeMillis()}.$extension")
+        val outputFile = File(cacheDir, "BBspace_${System.currentTimeMillis()}.$extension")
         val connection = java.net.URL(imageUrl).openConnection() as java.net.HttpURLConnection
         try {
             connection.setRequestProperty("Referer", "https://www.bilibili.com/")
@@ -1971,7 +1971,7 @@ suspend fun saveImageToGallery(context: android.content.Context, imageUrl: Strin
                     isWebp -> "image/webp"
                     else -> "image/jpeg"
                 }
-                val fileName = "BiliPai_${System.currentTimeMillis()}.$extension"
+                val fileName = "BBspace_${System.currentTimeMillis()}.$extension"
 
                 if (saveBytesToCustomImageSaveDirectory(context, bytes, fileName, mimeType)) {
                     Log.d("ImagePreview", "Image saved to custom directory: $fileName")
@@ -2029,7 +2029,7 @@ suspend fun saveImageToGallery(context: android.content.Context, imageUrl: Strin
             // 生成文件名
             val extension = if (isPng) "png" else "jpg"
             val mimeType = if (isPng) "image/png" else "image/jpeg"
-            val fileName = "BiliPai_${System.currentTimeMillis()}.$extension"
+            val fileName = "BBspace_${System.currentTimeMillis()}.$extension"
             val format = if (isPng) android.graphics.Bitmap.CompressFormat.PNG else android.graphics.Bitmap.CompressFormat.JPEG
 
             if (

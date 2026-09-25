@@ -428,7 +428,7 @@ fun VideoNoteDeleteConfirmDialog(
     AppAlertDialog(
         onDismissRequest = onDismiss,
         title = { AppText("删除视频笔记") },
-        text = { AppText("删除后无法在 BiliPai 内恢复。确认要删除这条笔记吗？") },
+        text = { AppText("删除后无法在 BBspace 内恢复。确认要删除这条笔记吗？") },
         confirmButton = {
             AppTextButton(onClick = onConfirm, enabled = !deleting) {
                 AppText(if (deleting) "删除中" else "删除")

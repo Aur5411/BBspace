@@ -140,7 +140,7 @@ private fun renderReplyCommentImage(spec: ReplyCommentImageSpec): Bitmap {
     val footerLeft = horizontalPadding
     val footerBaseline = qrTop + 42f
     canvas.drawText(spec.footerText, footerLeft, footerBaseline, footerPaint)
-    canvas.drawText("BiliPai · ${spec.generatedAtText}", footerLeft, footerBaseline + 42f, tinyPaint)
+    canvas.drawText("BBspace · ${spec.generatedAtText}", footerLeft, footerBaseline + 42f, tinyPaint)
     canvas.drawText(spec.qrUrl, footerLeft, footerBaseline + 84f, tinyPaint)
 
     return bitmap

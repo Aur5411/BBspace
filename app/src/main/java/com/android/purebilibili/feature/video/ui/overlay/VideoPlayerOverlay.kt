@@ -1733,7 +1733,7 @@ fun VideoPlayerOverlay(
                             as android.content.ClipboardManager
                         clipboard.setPrimaryClip(
                             ClipData.newPlainText(
-                                "BiliPai Player Diagnostics",
+                                "BBspace Player Diagnostics",
                                 exportDiagnosticReport(null)
                             )
                         )

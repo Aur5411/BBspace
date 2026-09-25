@@ -430,8 +430,8 @@ object SsdpCastClient {
 
     private fun buildDidlMetadata(url: String, title: String, creator: String): String {
         val escapedUrl = escapeXml(url)
-        val escapedTitle = escapeXml(title.ifBlank { "BiliPai Video" })
-        val escapedCreator = escapeXml(creator.ifBlank { "BiliPai" })
+        val escapedTitle = escapeXml(title.ifBlank { "BBspace Video" })
+        val escapedCreator = escapeXml(creator.ifBlank { "BBspace" })
         return """
             <DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/"
                 xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/"

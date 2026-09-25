@@ -143,7 +143,7 @@ class PlaybackService : MediaSessionService() {
                     fallbackIconKey = SettingsManager.getAppIconSync(this)
                 )
             )
-            .setContentTitle("BiliPai")
+            .setContentTitle("BBspace")
             .setContentText("正在准备播放控件")
             .setOnlyAlertOnce(true)
             .setOngoing(true)

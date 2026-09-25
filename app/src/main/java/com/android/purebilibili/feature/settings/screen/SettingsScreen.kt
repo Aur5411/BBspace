@@ -587,7 +587,7 @@ fun SettingsScreen(
             text = {
                 Column {
                     AppText(
-                        "默认保存到系统相册的 BiliPai 文件夹。",
+                        "默认保存到系统相册的 BBspace 文件夹。",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -629,7 +629,7 @@ fun SettingsScreen(
         com.android.purebilibili.core.ui.AppAlertDialog(
             onDismissRequest = { showEasterEggDialog = false; versionClickCount = 0 },
             title = { AppText(" 你发现了彩蛋！", fontWeight = FontWeight.Bold) },
-            text = { AppText("感谢你使用 BiliPai！这是一个用爱发电的开源项目。") },
+            text = { AppText("感谢你使用 BBspace！这是一个用爱发电的开源项目。") },
             confirmButton = { com.android.purebilibili.core.ui.AppDialogAction(onClick = { showEasterEggDialog = false; versionClickCount = 0 }) { AppText("我知道了！") } }
         )
     }

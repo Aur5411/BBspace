@@ -331,7 +331,7 @@ object AppUpdateChecker {
         if (tagName.isBlank()) return null
         val releaseUrl = releaseObject["html_url"]?.jsonPrimitive?.content
             ?.takeIf { it.isNotBlank() }
-            ?: "https://github.com/jay3-yy/BiliPai/releases"
+            ?: "https://github.com/Aur5411/BBspace/releases"
         val releaseNotes = releaseObject["body"]?.jsonPrimitive?.content.orEmpty().trim()
         val publishedAt = releaseObject["published_at"]?.jsonPrimitive?.content?.takeIf { it.isNotBlank() }
         val isPrerelease = releaseObject["prerelease"]?.jsonPrimitive?.content?.toBooleanStrictOrNull() ?: false

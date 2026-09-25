@@ -65,7 +65,7 @@ private fun downloadVideoShareCover(
     cleanupVideoShareCoverCache(cacheDir)
     val outputFile = File(
         cacheDir,
-        "BiliPai_share_${bvid.ifBlank { "video" }}.${resolveVideoShareCoverExtension(mimeType)}"
+        "BBspace_share_${bvid.ifBlank { "video" }}.${resolveVideoShareCoverExtension(mimeType)}"
     )
     val connection = URL(coverUrl).openConnection() as HttpURLConnection
     try {
@@ -97,7 +97,7 @@ private fun cleanupVideoShareCoverCache(cacheDir: File) {
     val now = System.currentTimeMillis()
     cacheDir.listFiles()
         ?.filter { file ->
-            file.name.startsWith("BiliPai_share_") &&
+            file.name.startsWith("BBspace_share_") &&
                 now - file.lastModified() > VIDEO_SHARE_COVER_CACHE_TTL_MS
         }
         ?.forEach { file -> file.delete() }

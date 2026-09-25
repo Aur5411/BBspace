@@ -37,7 +37,10 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 
 /** 番剧首页各页签的单页条数(服务端单页上限 100, 取 30 兼顾首屏速度)。 */
@@ -437,24 +440,29 @@ class AnimeViewModel(application: Application) : AndroidViewModel(application) {
     private val _seasonCoverCache = MutableStateFlow<Map<Long, String>>(emptyMap())
     val seasonCoverCache: StateFlow<Map<Long, String>> = _seasonCoverCache.asStateFlow()
 
-    /** 为番表条目并发拉取封面(去重, 已缓存的跳过)。 */
+    /** 为番表条目并发拉取封面(去重, 已缓存的跳过; 8 路并发, 避免串行拉取过慢)。 */
     fun ensureSeasonCovers(items: List<com.android.purebilibili.data.model.animeko.AniScheduleItem>) {
         val missing = items.map { it.bangumiId }
             .distinct()
             .filter { it > 0L && _seasonCoverCache.value[it] == null }
         if (missing.isEmpty()) return
         viewModelScope.launch(Dispatchers.IO) {
-            missing.take(60).forEach { sid ->
-                when (val r = AnimekoRepository.subject(sid)) {
-                    is AniResult.Ok -> {
-                        _seasonCoverCache.value = _seasonCoverCache.value + (sid to r.value.cover)
-                    }
+            val semaphore = Semaphore(8)
+            missing.take(60).map { sid ->
+                launch {
+                    semaphore.withPermit {
+                        when (val r = AnimekoRepository.subject(sid)) {
+                            is AniResult.Ok -> {
+                                _seasonCoverCache.value = _seasonCoverCache.value + (sid to r.value.cover)
+                            }
 
-                    is AniResult.Err -> {
-                        _seasonCoverCache.value = _seasonCoverCache.value + (sid to "")
+                            is AniResult.Err -> {
+                                _seasonCoverCache.value = _seasonCoverCache.value + (sid to "")
+                            }
+                        }
                     }
                 }
-            }
+            }.joinAll()
         }
     }
 

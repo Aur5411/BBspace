@@ -81,10 +81,10 @@ fun getIconGroups(): List<IconGroup> {
                 IconOption("icon_blue_snow_maid_announcement", "蓝雪女仆·喇叭", "居中扩音器主题", R.mipmap.ic_launcher_blue_snow_maid_announcement_round),
                 IconOption("icon_blue_snow_maid_front", "蓝雪女仆·正面", "正面微笑主题", R.mipmap.ic_launcher_blue_snow_maid_front_round),
                 IconOption("icon_3d", "3D立体", "全新3D设计", R.mipmap.ic_launcher_3d_foreground),
-                IconOption("icon_bilipai", "BiliPai", "全新品牌图标", R.mipmap.ic_launcher_bilipai_round),
-                IconOption("icon_bilipai_pink", "BiliPai 粉", "同款粉色", R.mipmap.ic_launcher_bilipai_pink_round),
-                IconOption("icon_bilipai_white", "BiliPai 白", "霜白配色", R.mipmap.ic_launcher_bilipai_white_round),
-                IconOption("icon_bilipai_monet", "BiliPai Monet", "随系统主题图标取色", R.mipmap.ic_launcher_bilipai_monet_round)
+                IconOption("icon_bilipai", "BBspace", "全新品牌图标", R.mipmap.ic_launcher_bilipai_round),
+                IconOption("icon_bilipai_pink", "BBspace 粉", "同款粉色", R.mipmap.ic_launcher_bilipai_pink_round),
+                IconOption("icon_bilipai_white", "BBspace 白", "霜白配色", R.mipmap.ic_launcher_bilipai_white_round),
+                IconOption("icon_bilipai_monet", "BBspace Monet", "随系统主题图标取色", R.mipmap.ic_launcher_bilipai_monet_round)
             )
         )
     )
