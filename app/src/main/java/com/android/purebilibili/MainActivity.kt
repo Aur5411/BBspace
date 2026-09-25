@@ -2539,10 +2539,10 @@ open class MainActivity : AppCompatActivity() {
                         return
                     }
                     
-                    // 🚀 App Shortcuts: bilipai:// scheme
-                    if (scheme == "bilipai") {
+                    // 🚀 App Shortcuts: bbspace:// 为本应用自有 scheme（历史遗留的 bilipai:// 继续兼容）
+                    if (scheme == "bbspace" || scheme == "bilipai") {
                         pendingRoute = host  // e.g., "search", "dynamic", "favorite", "history"
-                        Logger.d(TAG, "🚀 App Shortcut detected: $host")
+                        Logger.d(TAG, "🚀 App Shortcut detected: scheme=$scheme host=$host")
                     } else {
                         resolveIntentLinkAndNavigate(uri.toString())
                     }

@@ -9,9 +9,9 @@
         android:shortcutLongLabel="@string/shortcut_search_long">
         <intent
             android:action="android.intent.action.VIEW"
-            android:targetPackage="com.android.purebilibili"
+            android:targetPackage="com.BBspace"
             android:targetClass="com.android.purebilibili.MainActivity"
-            android:data="bilipai://search" />
+            android:data="bbspace://search" />
     </shortcut>
 
     <!-- 稍后再看：Launcher 通常只展示四个快捷方式，优先保留高频个人功能。 -->
@@ -23,9 +23,9 @@
         android:shortcutLongLabel="@string/shortcut_watch_later_long">
         <intent
             android:action="android.intent.action.VIEW"
-            android:targetPackage="com.android.purebilibili"
+            android:targetPackage="com.BBspace"
             android:targetClass="com.android.purebilibili.MainActivity"
-            android:data="bilipai://watch_later" />
+            android:data="bbspace://watch_later" />
     </shortcut>
 
     <!-- 收藏 -->
@@ -37,9 +37,9 @@
         android:shortcutLongLabel="@string/shortcut_favorite_long">
         <intent
             android:action="android.intent.action.VIEW"
-            android:targetPackage="com.android.purebilibili"
+            android:targetPackage="com.BBspace"
             android:targetClass="com.android.purebilibili.MainActivity"
-            android:data="bilipai://favorite" />
+            android:data="bbspace://favorite" />
     </shortcut>
 
     <!-- 历史 -->
@@ -51,8 +51,8 @@
         android:shortcutLongLabel="@string/shortcut_history_long">
         <intent
             android:action="android.intent.action.VIEW"
-            android:targetPackage="com.android.purebilibili"
+            android:targetPackage="com.BBspace"
             android:targetClass="com.android.purebilibili.MainActivity"
-            android:data="bilipai://history" />
+            android:data="bbspace://history" />
     </shortcut>
 </shortcuts>
