@@ -130,8 +130,8 @@ android {
         targetSdk = 37
         // 版本：语义化 X.Y.Z（MAJOR.MINOR.PATCH）+ versionCode 单调 +1
         // 规范：docs/wiki/VERSIONING.md · 更新日志：CHANGELOG.md
-        versionCode = 47000
-        versionName = "4.7.0"
+        versionCode = 48000
+        versionName = "4.8.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
