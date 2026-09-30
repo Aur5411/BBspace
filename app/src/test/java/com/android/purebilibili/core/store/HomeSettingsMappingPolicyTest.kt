@@ -74,7 +74,6 @@ class HomeSettingsMappingPolicyTest {
         assertEquals(HomeDurationStyle.OUTSIDE_COVER, result.homeDurationStyle)
         assertEquals(HomeWallpaperEffectMode.SOFT_BLUR, result.homeWallpaperEffectMode)
         assertEquals(HomeWallpaperEffectScope.HOME_ONLY, result.homeWallpaperEffectScope)
-        assertFalse(result.lowQualityHomeCoverInDataSaver)
         assertTrue(result.showHomeUpBadges)
         assertTrue(result.showHomeUpAvatars)
         assertTrue(result.showHomePublishTime)
@@ -125,7 +124,6 @@ class HomeSettingsMappingPolicyTest {
             booleanPreferencesKey("home_video_duration_badges_visible") to false,
             intPreferencesKey("home_wallpaper_effect_mode") to HomeWallpaperEffectMode.STRONG_BLUR.value,
             intPreferencesKey("home_wallpaper_effect_scope") to HomeWallpaperEffectScope.GLOBAL.value,
-            booleanPreferencesKey("low_quality_home_cover_in_data_saver") to true,
             booleanPreferencesKey("home_up_badges_visible") to false,
             booleanPreferencesKey("home_up_avatars_visible") to false,
             booleanPreferencesKey("home_publish_time_visible") to false,
@@ -180,7 +178,6 @@ class HomeSettingsMappingPolicyTest {
         assertEquals(HomeDurationStyle.HIDDEN, result.homeDurationStyle)
         assertEquals(HomeWallpaperEffectMode.STRONG_BLUR, result.homeWallpaperEffectMode)
         assertEquals(HomeWallpaperEffectScope.GLOBAL, result.homeWallpaperEffectScope)
-        assertTrue(result.lowQualityHomeCoverInDataSaver)
         assertFalse(result.showHomeUpBadges)
         assertFalse(result.showHomeUpAvatars)
         assertFalse(result.showHomePublishTime)

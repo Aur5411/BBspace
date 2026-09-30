@@ -809,7 +809,6 @@ internal data class QualitySwitchFailureDialogState(
 )
 
 internal enum class InitialQualityUnavailableReason {
-    DATA_SAVER,
     LOGIN_REQUIRED,
     VIP_REQUIRED,
     SERVER_DOWNGRADED
@@ -819,12 +818,8 @@ internal fun resolveInitialQualityUnavailableReason(
     requestedQualityId: Int,
     actualQualityId: Int,
     isLoggedIn: Boolean,
-    isVip: Boolean,
-    dataSaverLimited: Boolean
+    isVip: Boolean
 ): InitialQualityUnavailableReason? {
-    if (dataSaverLimited && requestedQualityId > 32) {
-        return InitialQualityUnavailableReason.DATA_SAVER
-    }
     if (requestedQualityId < 80 || actualQualityId >= requestedQualityId) {
         return null
     }
@@ -841,12 +836,9 @@ internal fun resolveInitialQualityWarningTarget(
     requestedQualityId: Int,
     isLoggedIn: Boolean,
     isVip: Boolean,
-    resolvedTargetQuality: Int? = null,
-    dataSaverLimited: Boolean = false
+    resolvedTargetQuality: Int? = null
 ): Int {
-    if (!dataSaverLimited) {
-        resolvedTargetQuality?.takeIf { it > 0 }?.let { return it }
-    }
+    resolvedTargetQuality?.takeIf { it > 0 }?.let { return it }
     if (requestedQualityId < 127) return requestedQualityId
     return when {
         isVip -> 120
@@ -897,8 +889,6 @@ internal fun resolveQualitySwitchFailureMessage(
 ): String {
     initialUnavailableReason?.let { reason ->
         return when (reason) {
-            InitialQualityUnavailableReason.DATA_SAVER ->
-                "$requestedQualityLabel 已被省流量模式限制为 480P。关闭省流量模式或切换到不受限网络后会重新请求高画质。"
             InitialQualityUnavailableReason.LOGIN_REQUIRED ->
                 "$requestedQualityLabel 需要有效登录 Cookie，当前取流接口没有通过登录鉴权，所以服务端只返回了低画质。"
             InitialQualityUnavailableReason.VIP_REQUIRED ->
@@ -3289,27 +3279,9 @@ class VideoPlaybackViewModel(application: Application) : AndroidViewModel(applic
                     "⏯️ AutoPlay Decision: arg=${playbackRequest.autoPlay}, setting=${shouldAutoPlay}, Final=$shouldAutoPlay, codec=$videoCodecPreference, blocked=$sessionBlockedCodecs"
                 )
             
-            // 📉 [省流量] 省流量模式逻辑：
-            // - ALWAYS: 任何网络都限制 480P
-            // - MOBILE_ONLY: 仅移动数据时限制 480P（WiFi不受限）
             val isOnMobileNetwork = appContext?.let { NetworkUtils.isMobileData(it) } ?: false
-            val dataSaverMode = appContext?.let { 
-                com.android.purebilibili.core.store.SettingsManager.getDataSaverModeSync(it) 
-            } ?: com.android.purebilibili.core.store.SettingsManager.DataSaverMode.MOBILE_ONLY
             
-            //  判断是否应该限制画质
-            val shouldLimitQuality = when (dataSaverMode) {
-                com.android.purebilibili.core.store.SettingsManager.DataSaverMode.OFF -> false
-                com.android.purebilibili.core.store.SettingsManager.DataSaverMode.ALWAYS -> true  // 任何网络都限制
-                com.android.purebilibili.core.store.SettingsManager.DataSaverMode.MOBILE_ONLY -> isOnMobileNetwork  // 仅移动数据
-            }
-            
-            var finalQuality = defaultQuality
-            val dataSaverLimitedQuality = shouldLimitQuality && finalQuality > 32
-            if (dataSaverLimitedQuality) {
-                finalQuality = 32
-                com.android.purebilibili.core.util.Logger.d("VideoPlaybackViewModel", "📉 省流量模式(${dataSaverMode.label}): 限制画质为480P")
-            }
+            val finalQuality = defaultQuality
             
             try {
                 val loadConfig = PlaybackLoadConfig(
@@ -3474,15 +3446,13 @@ class VideoPlaybackViewModel(application: Application) : AndroidViewModel(applic
                             requestedQualityId = requestedQualityForWarning,
                             isLoggedIn = result.isLoggedIn,
                             isVip = result.isVip,
-                            resolvedTargetQuality = result.resolvedTargetQuality,
-                            dataSaverLimited = dataSaverLimitedQuality
+                            resolvedTargetQuality = result.resolvedTargetQuality
                         )
                         val initialQualityUnavailableReason = resolveInitialQualityUnavailableReason(
                             requestedQualityId = initialQualityWarningTarget,
                             actualQualityId = result.quality,
                             isLoggedIn = result.isLoggedIn,
-                            isVip = result.isVip,
-                            dataSaverLimited = dataSaverLimitedQuality
+                            isVip = result.isVip
                         )
                         // A fast-start payload may legitimately be upgraded in the background.
                         // Do not report it as a terminal failure before that exact-track request finishes.

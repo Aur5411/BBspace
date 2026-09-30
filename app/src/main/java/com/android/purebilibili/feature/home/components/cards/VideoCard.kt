@@ -508,7 +508,6 @@ internal fun ElegantVideoCard(
     isQuickReturningFromVideoDetail: Boolean = false,
     scrollLiteModeEnabled: Boolean = false,
     showPublishTime: Boolean = false,   //  是否显示发布时间（搜索结果用）
-    isDataSaverActive: Boolean = false, // 🚀 [性能优化] 从父级传入，避免每个卡片重复计算
     preferLowQualityCover: Boolean = false,
     coverRequestSpec: HomeCoverRequestSpec? = null,
     glassEnabled: Boolean = true,
@@ -653,7 +652,6 @@ internal fun ElegantVideoCard(
         homeWallpaperIsStatic,
         homeWallpaperBackdropReady,
         blurEnabled,
-        isDataSaverActive,
         lowBlurBudgetForced,
         Build.VERSION.SDK_INT,
     ) {
@@ -663,7 +661,6 @@ internal fun ElegantVideoCard(
             wallpaperIsStatic = homeWallpaperIsStatic,
             backdropReady = homeWallpaperBackdropReady,
             blurEnabled = blurEnabled,
-            isDataSaverActive = isDataSaverActive,
             lowBlurBudgetForced = lowBlurBudgetForced,
             sdkInt = Build.VERSION.SDK_INT,
         )
@@ -677,7 +674,6 @@ internal fun ElegantVideoCard(
         wallpaperTintEnabled,
         wallpaperEffectMode,
         isDarkCardTheme,
-        isDataSaverActive,
         infoGlassMode,
         wallpaperHazeState != null,
         blurEnabled
@@ -686,7 +682,6 @@ internal fun ElegantVideoCard(
             wallpaperTintEnabled = wallpaperTintEnabled,
             wallpaperEffectMode = wallpaperEffectMode,
             isDarkTheme = isDarkCardTheme,
-            isDataSaverActive = isDataSaverActive,
             infoGlassMode = infoGlassMode,
             hasWallpaperHazeState = wallpaperHazeState != null,
             hasLayerBackdrop = false,
@@ -746,7 +741,7 @@ internal fun ElegantVideoCard(
     //  [新增] 确认对话框状态
     var showUnfavoriteDialog by remember { mutableStateOf(false) }
     
-    val useLowQualityCover = isDataSaverActive && preferLowQualityCover
+    val useLowQualityCover = preferLowQualityCover
     val coverCacheKey: String
     val coverUrl: String
     val premiumBadgeLabel: String?
@@ -1611,7 +1606,6 @@ internal fun ElegantVideoCard(
                             isDarkTheme = isDarkCardTheme,
                             defaultContainerColor = baseContainerColor,
                             defaultBorderColor = baseBorderColor,
-                            isDataSaverActive = isDataSaverActive,
                             frostedGlassEnabled = true
                         )
                         drawRect(color = drawSpec.containerColor)

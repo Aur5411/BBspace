@@ -154,7 +154,6 @@ internal fun resolveVideoDetailReturnInfoSurfaceSpec(
     val appearance = resolveHomeCardInfoSurfaceAppearance(
         wallpaperTintEnabled = true,
         isDarkTheme = isDarkTheme,
-        isDataSaverActive = false,
         hasWallpaperHazeState = false,
         hasLayerBackdrop = false,
         blurEnabled = true,

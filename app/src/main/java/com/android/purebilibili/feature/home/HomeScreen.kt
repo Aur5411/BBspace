@@ -976,9 +976,6 @@ fun HomeScreen(
     val crashTrackingConsentShown = homeSettings.crashTrackingConsentShown
     val baseCardAnimationEnabled = homeSettings.cardAnimationEnabled      //  卡片进场动画开关
     val baseCardTransitionEnabled = homeSettings.cardTransitionEnabled
-    val baseIsDataSaverActive = remember(context) {
-        com.android.purebilibili.core.store.SettingsManager.isDataSaverActive(context)
-    }
     val homePerformanceConfig = remember(
         baseIsHeaderBlurEnabled,
         baseIsBottomBarBlurEnabled,
@@ -987,7 +984,6 @@ fun HomeScreen(
         homeSettings.isBottomBarLiquidGlassEnabled,
         baseCardAnimationEnabled,
         baseCardTransitionEnabled,
-        baseIsDataSaverActive,
         homeSettings.androidNativeLiquidGlassEnabled,
         semanticVisualPolicy.supportsIndependentLiquidGlass
     ) {
@@ -1001,7 +997,6 @@ fun HomeScreen(
             androidNativeLiquidGlassEnabled = homeSettings.androidNativeLiquidGlassEnabled,
             cardAnimationEnabled = baseCardAnimationEnabled,
             cardTransitionEnabled = baseCardTransitionEnabled,
-            isDataSaverActive = baseIsDataSaverActive,
             smartVisualGuardEnabled = false
         )
     }
@@ -1070,7 +1065,6 @@ fun HomeScreen(
     } else {
         null
     }?.takeIf { recoverableBlurEnabled(it) }
-    val isDataSaverActive = homePerformanceConfig.isDataSaverActive
     val preloadAheadCount = homePerformanceConfig.preloadAheadCount
     val configuredHomeWallpaperUri by SettingsManager.getHomeWallpaperUri(context).collectAsStateWithLifecycle(initialValue = ""
         )
@@ -1314,21 +1308,18 @@ fun HomeScreen(
         homeWallpaperUri,
         homeSettings.homeWallpaperEffectMode,
         isLightBackground,
-        isDataSaverActive
     ) {
         resolveHomeWallpaperBackdropAppearance(
             hasWallpaper = homeWallpaperUri.isNotBlank(),
             effectMode = homeSettings.homeWallpaperEffectMode,
             isDarkTheme = !isLightBackground,
-            isDataSaverActive = isDataSaverActive
         )
     }
     val shouldCaptureHomeWallpaperBackdrop =
         homeSettings.homeCardDynamicTintEnabled &&
             homeWallpaperBackdropAppearance.visible &&
             homeWallpaperUri.isNotBlank() &&
-            isStaticHomeWallpaperUri(homeWallpaperUri) &&
-            !isDataSaverActive
+            isStaticHomeWallpaperUri(homeWallpaperUri)
     val homeWallpaperBackdropSource = if (shouldCaptureHomeWallpaperBackdrop) {
         // Key the recorder by URI so a wallpaper replacement cannot briefly reuse the old
         // backdrop while the new image is being recorded.
@@ -1359,8 +1350,6 @@ fun HomeScreen(
         effectiveGridColumns,
         homeFeedCardLayout,
         density.density,
-        isDataSaverActive,
-        homeSettings.lowQualityHomeCoverInDataSaver,
     ) {
         val cardWidthDp = (
             contentWidth.value -
@@ -1370,8 +1359,7 @@ fun HomeScreen(
         resolveHomeCoverRequestSpec(
             cardWidthDp = cardWidthDp,
             density = density.density,
-            useLowQualityCover =
-                isDataSaverActive && homeSettings.lowQualityHomeCoverInDataSaver,
+            useLowQualityCover = false,
         )
     }
     //  [修复] 动态计算内容顶部边距，防止被头部遮挡
@@ -1915,7 +1903,6 @@ fun HomeScreen(
                         playbackEnabled = isTopLevelActive,
                         appearance = homeWallpaperBackdropAppearance,
                         baseColor = AppSurfaceTokens.chromeBackground(),
-                        isDataSaverActive = isDataSaverActive,
                         modifier = homeWallpaperBackdropSource?.modifier ?: Modifier
                     )
                     // [Fix] Re-enabled default overscroll for better feedback
@@ -2246,7 +2233,6 @@ fun HomeScreen(
                                              pulse = skeletonPulse,
                                              wallpaperTintEnabled = homeWallpaperBackdropAppearance.visible,
                                              wallpaperEffectMode = homeSettings.homeWallpaperEffectMode,
-                                             isDataSaverActive = isDataSaverActive,
                                              coverAspectRatio = homeFeedCoverAspectRatio
                                          )
                                      }
@@ -2338,8 +2324,6 @@ fun HomeScreen(
                                      isReturningFromVideoDetail = isReturningFromVideoDetail,
                                      isQuickReturningFromVideoDetail = isQuickReturningFromVideoDetail,
                                      smartVisualGuardEnabled = false,
-                                     isDataSaverActive = isDataSaverActive,
-                                     preferLowQualityCover = homeSettings.lowQualityHomeCoverInDataSaver,
                                      compactStatsOnCover = homeSettings.compactVideoStatsOnCover,
                                      showCoverGlassBadges = homeSettings.showHomeCoverGlassBadges,
                                      // 信息区标签保持轻量；贴封面统计由卡片复用封面标签样式渲染。
@@ -2938,16 +2922,12 @@ fun HomeScreen(
     val isScrollingUp = true  // 保留参数兼容性
 
     //  [性能优化] 图片预加载 - 提前加载即将显示的视频封面
-    // 📉 [省流量] 省流量模式下禁用预加载
     LaunchedEffect(
         currentCategory,
         popularSubCategory,
-        isDataSaverActive,
         preloadAheadCount,
         isReturningFromVideoDetail,
     ) {
-        // 📉 省流量模式下跳过预加载
-        if (isDataSaverActive) return@LaunchedEffect
         if (preloadAheadCount <= 0) return@LaunchedEffect
         // 详情返回 morph 窗口：延后封面预加载，避免与 live surface + 景深抢 IO/主线程。
         if (isReturningFromVideoDetail) return@LaunchedEffect
@@ -2975,7 +2955,6 @@ fun HomeScreen(
                 val lastVisibleIndex = resolveHomeCategoryVideoGridKeys(videos)
                     .indexOfLast { it in visibleKeySet }
                 val preloadRange = resolveHomeCoverPreloadRange(
-                    isDataSaverActive = isDataSaverActive,
                     isScrollInProgress = isScrollInProgress,
                     lastVisibleIndex = lastVisibleIndex,
                     totalItemCount = videos.size,

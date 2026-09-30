@@ -481,33 +481,12 @@ class VideoLoadRequestPolicyTest {
     }
 
     @Test
-    fun `initial quality unavailable reason explains data saver cap`() {
-        val reason = resolveInitialQualityUnavailableReason(
-            requestedQualityId = 80,
-            actualQualityId = 32,
-            isLoggedIn = true,
-            isVip = false,
-            dataSaverLimited = true
-        )
-
-        assertEquals(InitialQualityUnavailableReason.DATA_SAVER, reason)
-
-        val message = resolveQualitySwitchFailureMessage(
-            requestedQualityLabel = "1080P",
-            initialUnavailableReason = reason
-        )
-
-        assertContains(message, "省流量模式")
-    }
-
-    @Test
     fun `initial quality unavailable reason explains missing login cookie`() {
         val reason = resolveInitialQualityUnavailableReason(
             requestedQualityId = 80,
             actualQualityId = 32,
             isLoggedIn = false,
-            isVip = false,
-            dataSaverLimited = false
+            isVip = false
         )
 
         assertEquals(InitialQualityUnavailableReason.LOGIN_REQUIRED, reason)
@@ -526,8 +505,7 @@ class VideoLoadRequestPolicyTest {
             requestedQualityId = 116,
             actualQualityId = 80,
             isLoggedIn = true,
-            isVip = false,
-            dataSaverLimited = false
+            isVip = false
         )
 
         assertEquals(InitialQualityUnavailableReason.VIP_REQUIRED, reason)
@@ -541,8 +519,7 @@ class VideoLoadRequestPolicyTest {
                 requestedQualityId = 80,
                 actualQualityId = 80,
                 isLoggedIn = true,
-                isVip = false,
-                dataSaverLimited = false
+                isVip = false
             )
         )
     }
@@ -553,8 +530,7 @@ class VideoLoadRequestPolicyTest {
             requestedQualityId = 127,
             isLoggedIn = true,
             isVip = true,
-            resolvedTargetQuality = 116,
-            dataSaverLimited = false
+            resolvedTargetQuality = 116
         )
 
         assertEquals(116, target)
@@ -564,8 +540,7 @@ class VideoLoadRequestPolicyTest {
                 requestedQualityId = target,
                 actualQualityId = 116,
                 isLoggedIn = true,
-                isVip = true,
-                dataSaverLimited = false
+                isVip = true
             )
         )
     }
@@ -576,8 +551,7 @@ class VideoLoadRequestPolicyTest {
             requestedQualityId = 127,
             isLoggedIn = true,
             isVip = true,
-            resolvedTargetQuality = 120,
-            dataSaverLimited = false
+            resolvedTargetQuality = 120
         )
 
         assertEquals(120, target)
@@ -587,8 +561,7 @@ class VideoLoadRequestPolicyTest {
                 requestedQualityId = target,
                 actualQualityId = 116,
                 isLoggedIn = true,
-                isVip = true,
-                dataSaverLimited = false
+                isVip = true
             )
         )
     }
@@ -625,20 +598,6 @@ class VideoLoadRequestPolicyTest {
                 requestedQualityId = 127,
                 isLoggedIn = true,
                 isVip = true
-            )
-        )
-    }
-
-    @Test
-    fun `data saver keeps original auto highest warning target`() {
-        assertEquals(
-            120,
-            resolveInitialQualityWarningTarget(
-                requestedQualityId = 127,
-                isLoggedIn = true,
-                isVip = true,
-                resolvedTargetQuality = 116,
-                dataSaverLimited = true
             )
         )
     }

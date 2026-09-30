@@ -120,7 +120,6 @@ fun CinematicVideoCard(
     isReturningFromVideoDetail: Boolean = false,
     isQuickReturningFromVideoDetail: Boolean = false,
     scrollLiteModeEnabled: Boolean = false,
-    isDataSaverActive: Boolean = false,
     preferLowQualityCover: Boolean = false,
     showUpBadge: Boolean = true,
     onDismiss: (() -> Unit)? = null,
@@ -135,7 +134,7 @@ fun CinematicVideoCard(
 
     var showDismissMenu by remember { mutableStateOf(false) }
 
-    val useLowQualityCover = isDataSaverActive && preferLowQualityCover
+    val useLowQualityCover = preferLowQualityCover
     val coverUrl = remember(video.bvid, useLowQualityCover) {
         FormatUtils.resolveVideoCoverUrl(
             if (video.pic.startsWith("//")) "https:${video.pic}" else video.pic,

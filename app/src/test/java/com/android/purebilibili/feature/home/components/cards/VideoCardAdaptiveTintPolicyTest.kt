@@ -175,7 +175,6 @@ class VideoCardAdaptiveTintPolicyTest {
                 wallpaperIsStatic = true,
                 backdropReady = true,
                 blurEnabled = true,
-                isDataSaverActive = false,
                 lowBlurBudgetForced = false,
                 sdkInt = 34,
             )
@@ -190,7 +189,6 @@ class VideoCardAdaptiveTintPolicyTest {
             wallpaperIsStatic = false,
             backdropReady = true,
             blurEnabled = true,
-            isDataSaverActive = false,
             lowBlurBudgetForced = false,
             sdkInt = 34,
         )
@@ -200,7 +198,6 @@ class VideoCardAdaptiveTintPolicyTest {
             wallpaperIsStatic = true,
             backdropReady = false,
             blurEnabled = true,
-            isDataSaverActive = false,
             lowBlurBudgetForced = false,
             sdkInt = 34,
         )
@@ -216,7 +213,6 @@ class VideoCardAdaptiveTintPolicyTest {
             wallpaperIsStatic = true,
             backdropReady = true,
             blurEnabled = true,
-            isDataSaverActive = true,
             lowBlurBudgetForced = false,
             sdkInt = 34,
         )
@@ -226,7 +222,6 @@ class VideoCardAdaptiveTintPolicyTest {
             wallpaperIsStatic = true,
             backdropReady = true,
             blurEnabled = true,
-            isDataSaverActive = false,
             lowBlurBudgetForced = false,
             sdkInt = 30,
         )
@@ -244,7 +239,6 @@ class VideoCardAdaptiveTintPolicyTest {
                 wallpaperIsStatic = true,
                 backdropReady = true,
                 blurEnabled = true,
-                isDataSaverActive = false,
                 lowBlurBudgetForced = false,
                 sdkInt = 34,
             )
@@ -257,7 +251,6 @@ class VideoCardAdaptiveTintPolicyTest {
                 wallpaperIsStatic = true,
                 backdropReady = true,
                 blurEnabled = true,
-                isDataSaverActive = false,
                 lowBlurBudgetForced = false,
                 sdkInt = 34,
             )

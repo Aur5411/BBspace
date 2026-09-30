@@ -671,7 +671,6 @@ data class HomeSettings(
     // 影响面覆盖全 App 视觉，必须保留 kill switch——某机型 JankStats 读数异常时可关闭。
     val runtimeVisualGuardEnabled: Boolean = true,
     val compactVideoStatsOnCover: Boolean = false, // 播放/弹幕位于信息区，不叠加在封面上
-    val lowQualityHomeCoverInDataSaver: Boolean = false, // 省流量时首页封面使用低清晰度
     // 卡片标签 / 信息区玻璃效果已下线，保留字段仅为兼容旧数据结构。
     val showHomeCoverGlassBadges: Boolean = false,
     val showHomeInfoGlassBadges: Boolean = false,
@@ -1540,8 +1539,6 @@ object SettingsManager {
         booleanPreferencesKey("runtime_visual_guard_enabled")
     //  [新增] 视频卡片统计信息贴封面开关
     private val KEY_COMPACT_VIDEO_STATS_ON_COVER = booleanPreferencesKey("compact_video_stats_on_cover")
-    private val KEY_LOW_QUALITY_HOME_COVER_IN_DATA_SAVER =
-        booleanPreferencesKey("low_quality_home_cover_in_data_saver")
     private val KEY_HOME_COVER_GLASS_BADGES_VISIBLE = booleanPreferencesKey("home_cover_glass_badges_visible")
     private val KEY_HOME_INFO_GLASS_BADGES_VISIBLE = booleanPreferencesKey("home_info_glass_badges_visible")
     private val KEY_HOME_CARD_BADGE_EFFECT_MODE = intPreferencesKey("home_card_badge_effect_mode")
@@ -1751,8 +1748,6 @@ object SettingsManager {
             runtimeVisualGuardEnabled =
                 preferences[KEY_RUNTIME_VISUAL_GUARD_ENABLED] ?: true,
             compactVideoStatsOnCover = preferences[KEY_COMPACT_VIDEO_STATS_ON_COVER] ?: false,
-            lowQualityHomeCoverInDataSaver =
-                preferences[KEY_LOW_QUALITY_HOME_COVER_IN_DATA_SAVER] ?: false,
             // 已下线：忽略旧数据，确保历史上开启过实时模糊/液态玻璃的用户不会继续走该路径。
             showHomeCoverGlassBadges = false,
             showHomeInfoGlassBadges = false,
@@ -3174,15 +3169,6 @@ object SettingsManager {
 
     suspend fun setCompactVideoStatsOnCover(context: Context, value: Boolean) {
         context.settingsDataStore.edit { preferences -> preferences[KEY_COMPACT_VIDEO_STATS_ON_COVER] = value }
-    }
-
-    fun getLowQualityHomeCoverInDataSaver(context: Context): Flow<Boolean> = context.settingsDataStore.data
-        .map { preferences -> preferences[KEY_LOW_QUALITY_HOME_COVER_IN_DATA_SAVER] ?: false }
-
-    suspend fun setLowQualityHomeCoverInDataSaver(context: Context, value: Boolean) {
-        context.settingsDataStore.edit { preferences ->
-            preferences[KEY_LOW_QUALITY_HOME_COVER_IN_DATA_SAVER] = value
-        }
     }
 
     fun getHomeCoverGlassBadgesVisible(context: Context): Flow<Boolean> = context.settingsDataStore.data
@@ -6393,57 +6379,6 @@ object SettingsManager {
         return File(baseDir, "downloads").absolutePath
     }
     
-    // ========== 📉 省流量模式 ==========
-    
-    private val KEY_DATA_SAVER_MODE = intPreferencesKey("data_saver_mode")
-    
-    /**
-     *  省流量模式
-     * - OFF: 关闭省流量
-     * - MOBILE_ONLY: 仅移动数据时启用（默认）
-     * - ALWAYS: 始终启用
-     */
-    enum class DataSaverMode(val value: Int, val label: String, val description: String) {
-        OFF(0, "关闭", "不限制流量使用"),
-        MOBILE_ONLY(1, "仅移动数据", "使用移动数据时自动省流量"),
-        ALWAYS(2, "始终开启", "始终使用省流量模式");
-        
-        companion object {
-            fun fromValue(value: Int): DataSaverMode = entries.find { it.value == value } ?: MOBILE_ONLY
-        }
-    }
-    
-    // --- 省流量模式设置 ---
-    fun getDataSaverMode(context: Context): Flow<DataSaverMode> = context.settingsDataStore.data
-        .map { preferences -> 
-            DataSaverMode.fromValue(preferences[KEY_DATA_SAVER_MODE] ?: DataSaverMode.MOBILE_ONLY.value)
-        }
-
-    suspend fun setDataSaverMode(context: Context, mode: DataSaverMode) {
-        context.settingsDataStore.edit { preferences -> 
-            preferences[KEY_DATA_SAVER_MODE] = mode.value 
-        }
-        //  同步到 SharedPreferences，供同步读取使用
-        context.getSharedPreferences("data_saver", Context.MODE_PRIVATE)
-            .edit().putInt("mode", mode.value).apply()
-    }
-    
-    //  同步读取省流量模式
-    fun getDataSaverModeSync(context: Context): DataSaverMode {
-        val value = context.getSharedPreferences("data_saver", Context.MODE_PRIVATE)
-            .getInt("mode", DataSaverMode.MOBILE_ONLY.value)
-        return DataSaverMode.fromValue(value)
-    }
-    
-    /**
-     *  判断当前是否应该启用省流量
-     * 根据模式和当前网络状态判断
-     */
-    fun isDataSaverActive(context: Context): Boolean {
-        // ★ 省流量模式已按用户要求移除, 恒为关闭
-        return false
-    }
-    
     //  [新增] --- 底栏顺序配置 ---
     // 默认顺序: HOME,DYNAMIC,HISTORY,PROFILE
     fun getBottomBarOrder(context: Context): Flow<List<String>> = context.settingsDataStore.data.map { prefs ->
@@ -7689,7 +7624,6 @@ object SettingsManager {
             BooleanShareablePreferenceDefinition(KEY_AUTO_HIGHEST_QUALITY, SettingsShareSection.PLAYBACK),
             BooleanShareablePreferenceDefinition(KEY_SPONSOR_BLOCK_ENABLED, SettingsShareSection.PLAYBACK),
             BooleanShareablePreferenceDefinition(KEY_SPONSOR_BLOCK_AUTO_SKIP, SettingsShareSection.PLAYBACK),
-            IntShareablePreferenceDefinition(KEY_DATA_SAVER_MODE, SettingsShareSection.PLAYBACK),
             BooleanShareablePreferenceDefinition(KEY_PORTRAIT_FULLSCREEN_ENABLED, SettingsShareSection.PLAYBACK),
             BooleanShareablePreferenceDefinition(KEY_AUTO_PORTRAIT_FULLSCREEN, SettingsShareSection.PLAYBACK),
             FloatShareablePreferenceDefinition(KEY_VERTICAL_VIDEO_RATIO, SettingsShareSection.PLAYBACK),

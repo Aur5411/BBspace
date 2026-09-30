@@ -22,9 +22,8 @@ class SettingsSearchFocusPolicyTest {
     @Test
     fun playbackFocusIndex_mapsSectionsByActualLazyColumnOrder() {
         assertEquals(10, resolvePlaybackSettingsScrollIndex(SettingsSearchFocusIds.PLAYBACK_NETWORK))
-        assertEquals(12, resolvePlaybackSettingsScrollIndex(SettingsSearchFocusIds.PLAYBACK_DATA_SAVER))
-        assertEquals(14, resolvePlaybackSettingsScrollIndex(SettingsSearchFocusIds.PLAYBACK_INTERACTION))
-        assertEquals(16, resolvePlaybackSettingsScrollIndex(SettingsSearchFocusIds.PLAYBACK_FULLSCREEN))
+        assertEquals(13, resolvePlaybackSettingsScrollIndex(SettingsSearchFocusIds.PLAYBACK_INTERACTION))
+        assertEquals(15, resolvePlaybackSettingsScrollIndex(SettingsSearchFocusIds.PLAYBACK_FULLSCREEN))
     }
 
     @Test

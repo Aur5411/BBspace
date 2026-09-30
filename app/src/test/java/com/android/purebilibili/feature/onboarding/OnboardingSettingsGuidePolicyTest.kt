@@ -4,7 +4,6 @@ import com.android.purebilibili.core.store.HomeTopLayoutOrder
 import com.android.purebilibili.core.store.SettingsManager
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class OnboardingSettingsGuidePolicyTest {
@@ -32,16 +31,6 @@ class OnboardingSettingsGuidePolicyTest {
         val preset = resolveOnboardingSettingsGuidePreset(OnboardingSettingsProfile.PERFORMANCE)
 
         assertTrue(preset.cardTransitionEnabled)
-        assertFalse(preset.lowQualityHomeCoverInDataSaver)
         assertTrue(preset.summaryLines.contains("保留核心视频过渡"))
-    }
-
-    @Test
-    fun dataSaverProfileUsesLowQualityHomeCoverOnlyInDataSaver() {
-        val preset = resolveOnboardingSettingsGuidePreset(OnboardingSettingsProfile.DATA_SAVER)
-
-        assertEquals(SettingsManager.DataSaverMode.MOBILE_ONLY, preset.dataSaverMode)
-        assertTrue(preset.lowQualityHomeCoverInDataSaver)
-        assertTrue(preset.cardTransitionEnabled)
     }
 }

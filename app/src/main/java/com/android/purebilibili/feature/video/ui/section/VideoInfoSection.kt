@@ -1622,7 +1622,6 @@ private fun BgmRecommendVideoCardRow(
                 index = rowIndex * 2 + columnIndex,
                 animationEnabled = false,
                 showPublishTime = true,
-                isDataSaverActive = true,
                 preferLowQualityCover = true,
                 coverAspectRatio = cardLayout.coverAspectRatio,
                 compactMetadata = cardLayout.compactMetadata,

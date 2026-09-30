@@ -81,9 +81,9 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
     SettingsSearchEntry(
         target = SettingsSearchTarget.PLAYBACK_QUALITY,
         title = "播放与画质",
-        subtitle = "视频解码、画质、字幕、倍速、连播与省流量设置",
+        subtitle = "视频解码、画质、字幕、倍速与连播设置",
         section = "设置",
-        aliases = listOf("播放", "解码", "画质", "音质", "默认画质", "默认音质", "Hi-Res", "杜比", "最高画质", "自动最高画质", "省流量", "定向流量", "字幕", "倍速", "自动连播")
+        aliases = listOf("播放", "解码", "画质", "音质", "默认画质", "默认音质", "Hi-Res", "杜比", "最高画质", "自动最高画质", "定向流量", "字幕", "倍速", "自动连播")
     ),
     SettingsSearchEntry(
         target = SettingsSearchTarget.FULLSCREEN_GESTURE,
@@ -281,7 +281,6 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
             "默认音质",
             "Hi-Res",
             "杜比音质",
-            "省流量模式",
             "定向流量",
             "b站定向流量",
             "详细统计信息",
@@ -619,14 +618,6 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
         section = "播放设置",
         aliases = listOf("网络与画质", "自动最高画质", "默认画质", "无线网络默认画质", "流量默认画质", "默认音质", "音质", "Hi-Res", "杜比音质", "跟随上次选择", "定向流量", "b站定向流量"),
         focusId = SettingsSearchFocusIds.PLAYBACK_NETWORK
-    ),
-    SettingsSearchEntry(
-        target = SettingsSearchTarget.PLAYBACK,
-        title = "省流量模式",
-        subtitle = "降低移动网络下的画质和首页图片清晰度",
-        section = "播放设置",
-        aliases = listOf("省流量", "省流量模式", "节省流量"),
-        focusId = SettingsSearchFocusIds.PLAYBACK_DATA_SAVER
     ),
     SettingsSearchEntry(
         target = SettingsSearchTarget.PLAYBACK,

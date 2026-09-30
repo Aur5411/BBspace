@@ -182,7 +182,6 @@ internal enum class SettingsIconRole {
     IMAGE_LONG_PRESS_ACTION,
     PLAYER_COLLAPSE_PAUSE,
     BOTTOM_BAR_SEARCH,
-    DATA_SAVER_COVER_QUALITY,
     SEGMENT_LOADING_COMPATIBILITY,
     NOTIFICATION_SCOPE_MESSAGE,
     NOTIFICATION_SCOPE_REPLY,
@@ -380,7 +379,6 @@ internal fun resolveSettingsMaterialSymbolResource(role: SettingsIconRole): Int 
     SettingsIconRole.IMAGE_LONG_PRESS_ACTION -> R.drawable.ms_photo_library_24
     SettingsIconRole.PLAYER_COLLAPSE_PAUSE -> R.drawable.ms_pause_24
     SettingsIconRole.BOTTOM_BAR_SEARCH -> R.drawable.ms_search_fill_24
-    SettingsIconRole.DATA_SAVER_COVER_QUALITY -> R.drawable.ms_wifi_24
     SettingsIconRole.SEGMENT_LOADING_COMPATIBILITY -> R.drawable.ms_cloud_download_24
     SettingsIconRole.NOTIFICATION_SCOPE_MESSAGE -> R.drawable.ms_mail_24
     SettingsIconRole.NOTIFICATION_SCOPE_REPLY -> R.drawable.ms_reply_24
@@ -648,7 +646,6 @@ internal fun resolveMiuixSettingsSemanticIcon(role: SettingsIconRole): ImageVect
     SettingsIconRole.IMAGE_LONG_PRESS_ACTION -> MiuixIcons.MoreCircle
     SettingsIconRole.PLAYER_COLLAPSE_PAUSE -> MiuixIcons.Pause
     SettingsIconRole.BOTTOM_BAR_SEARCH -> MiuixIcons.Search
-    SettingsIconRole.DATA_SAVER_COVER_QUALITY -> MiuixIcons.Download
     SettingsIconRole.SEGMENT_LOADING_COMPATIBILITY -> MiuixIcons.Merge
     SettingsIconRole.NOTIFICATION_SCOPE_MESSAGE -> MiuixIcons.Messages
     SettingsIconRole.NOTIFICATION_SCOPE_REPLY -> MiuixIcons.Answer

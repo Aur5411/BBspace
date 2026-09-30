@@ -103,7 +103,6 @@ fun resolveVideoCardAmbientDrawSpec(
     isDarkTheme: Boolean,
     defaultContainerColor: Color,
     defaultBorderColor: Color,
-    isDataSaverActive: Boolean = false,
     frostedGlassEnabled: Boolean = true
 ): VideoCardAmbientDrawSpec {
     if (!frostedGlassEnabled || (!wallpaperTintEnabled && wallpaperPalette == null && coverTint == null)) {
@@ -120,11 +119,7 @@ fun resolveVideoCardAmbientDrawSpec(
     )
 
     // 核心质感：适度透明度以“直接透出背后的高斯模糊”，同时保留浓郁饱和色彩，杜绝发白发灰的厚重白雾
-    val glassTransparency = if (isDarkTheme) {
-        if (isDataSaverActive) 0.65f else 0.38f
-    } else {
-        if (isDataSaverActive) 0.70f else 0.34f
-    }
+    val glassTransparency = if (isDarkTheme) 0.38f else 0.34f
 
     // 1. 壁纸色彩联动（图一）：直接采用壁纸取色插值后的真实色彩，杜绝与白色容器底色混合稀释
     val baseColor = if (wallpaperTintEnabled && wallpaperPalette != null) {

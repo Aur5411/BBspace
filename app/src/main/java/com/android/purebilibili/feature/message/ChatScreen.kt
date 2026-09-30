@@ -459,20 +459,15 @@ private fun ChatWallpaperHost(
 
     val baseColor = AppSurfaceTokens.chromeBackground()
     val isLightBackground = remember(baseColor) { baseColor.luminance() > 0.5f }
-    val isDataSaverActive = remember(context) {
-        SettingsManager.isDataSaverActive(context)
-    }
     val wallpaperAppearance = remember(
         wallpaperUri,
         wallpaperEffectMode,
         isLightBackground,
-        isDataSaverActive,
     ) {
         resolveHomeWallpaperBackdropAppearance(
             hasWallpaper = wallpaperUri.isNotBlank(),
             effectMode = wallpaperEffectMode,
             isDarkTheme = !isLightBackground,
-            isDataSaverActive = isDataSaverActive,
         )
     }
     val wallpaperVisible = wallpaperAppearance.visible && wallpaperUri.isNotBlank()
@@ -489,7 +484,6 @@ private fun ChatWallpaperHost(
                 wallpaperUri = wallpaperUri,
                 appearance = wallpaperAppearance,
                 baseColor = baseColor,
-                isDataSaverActive = isDataSaverActive,
                 modifier = Modifier.fillMaxSize(),
             )
         }

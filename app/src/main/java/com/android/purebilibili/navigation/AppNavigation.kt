@@ -620,9 +620,6 @@ fun AppNavigation(
         }
         val backgroundColor = MaterialTheme.colorScheme.background
         val isLightBackground = remember(backgroundColor) { backgroundColor.luminance() > 0.5f }
-        val isDataSaverActiveForGlobalWallpaper = remember(context) {
-            SettingsManager.isDataSaverActive(context)
-        }
         var previousRouteForStopPolicy by remember { mutableStateOf<String?>(null) }
         var previousVideoBvidForStopPolicy by remember { mutableStateOf<String?>(null) }
         val currentVideoBvidForStopPolicy = (currentNavigation3Key as? BiliPaiNavKey.VideoDetail)?.bvid
@@ -717,15 +714,13 @@ fun AppNavigation(
             globalHomeWallpaperUri,
             effectiveHomeSettings.homeWallpaperEffectMode,
             renderGlobalHomeWallpaperBackdrop,
-            isLightBackground,
-            isDataSaverActiveForGlobalWallpaper
+            isLightBackground
         ) {
             resolveHomeWallpaperBackdropAppearance(
                 hasWallpaper = renderGlobalHomeWallpaperBackdrop &&
                     globalHomeWallpaperUri.isNotBlank(),
                 effectMode = effectiveHomeSettings.homeWallpaperEffectMode,
                 isDarkTheme = !isLightBackground,
-                isDataSaverActive = isDataSaverActiveForGlobalWallpaper,
                 // Chat uses the same presence, blur and scrim treatment as HomeScreen.
                 globalWallpaper = false
             )
@@ -2073,7 +2068,6 @@ fun AppNavigation(
                         sourceBoundsProvider = {
                             navigation3SourceMetadata.sourceBounds
                         },
-                        isDataSaverActive = isDataSaverActiveForGlobalWallpaper,
                         isLightBackground = isLightBackground,
                         realtimeBlurEnabled = videoTransitionRealtimeBlurEnabled,
                     )

@@ -52,7 +52,6 @@ import com.android.purebilibili.core.ui.ContainerLevel
 fun LiveRoomCard(
     room: LiveRoom,
     index: Int,
-    isDataSaverActive: Boolean = false,
     preferLowQualityCover: Boolean = false,
     modifier: Modifier = Modifier,
     onClick: (Long) -> Unit
@@ -67,7 +66,7 @@ fun LiveRoomCard(
     val animatedVisibilityScope = LocalAnimatedVisibilityScope.current
 
     
-    val useLowQualityCover = isDataSaverActive && preferLowQualityCover
+    val useLowQualityCover = preferLowQualityCover
     val coverUrl = remember(room.roomid, useLowQualityCover) {
         FormatUtils.resolveVideoCoverUrl(
             room.cover.ifEmpty { room.keyframe.ifEmpty { room.userCover } },

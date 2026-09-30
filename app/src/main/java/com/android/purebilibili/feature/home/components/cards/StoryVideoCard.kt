@@ -102,7 +102,6 @@ internal fun StoryVideoCard(
     isReturningFromVideoDetail: Boolean = false,
     isQuickReturningFromVideoDetail: Boolean = false,
     scrollLiteModeEnabled: Boolean = false,
-    isDataSaverActive: Boolean = false,
     preferLowQualityCover: Boolean = false,
     coverRequestSpec: HomeCoverRequestSpec? = null,
     showCoverGlassBadges: Boolean = false,
@@ -161,7 +160,7 @@ internal fun StoryVideoCard(
         video = video,
         showOnlineCount = showOnlineCount
     )
-    val useLowQualityCover = isDataSaverActive && preferLowQualityCover
+    val useLowQualityCover = preferLowQualityCover
     val coverUrl = remember(video.bvid, video.pic, useLowQualityCover, coverRequestSpec) {
         coverRequestSpec?.resolveUrl(video.pic) ?: FormatUtils.resolveVideoCoverUrl(
             video.pic,

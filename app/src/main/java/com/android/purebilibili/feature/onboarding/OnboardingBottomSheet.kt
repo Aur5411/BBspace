@@ -674,7 +674,7 @@ private fun PlaybackSettingsPage(hazeState: HazeState) {
         FeatureListItem(
             icon = "📺",
             title = "智能画质",
-            description = "WiFi/流量自动切换画质，省流量模式可用",
+            description = "WiFi/移动网络分别设置默认画质，自动切换",
             animationProgress = animatedItems[3].value,
             hazeState = hazeState
         )

@@ -42,7 +42,6 @@ internal fun DepthSyncedGlobalHomeWallpaperBackdrop(
     depthPhaseProvider: () -> VideoCardTransitionBackgroundPhase,
     depthGestureRestoreProvider: () -> Boolean,
     sourceBoundsProvider: () -> Rect? = { null },
-    isDataSaverActive: Boolean = false,
     isLightBackground: Boolean = false,
     realtimeBlurEnabled: Boolean = true,
     modifier: Modifier = Modifier,
@@ -84,7 +83,6 @@ internal fun DepthSyncedGlobalHomeWallpaperBackdrop(
             wallpaperUri = wallpaperUri,
             appearance = appearance,
             baseColor = baseColor,
-            isDataSaverActive = isDataSaverActive,
         )
     }
 }
@@ -94,7 +92,6 @@ internal fun HomeWallpaperBackdrop(
     wallpaperUri: String,
     appearance: HomeWallpaperBackdropAppearance,
     baseColor: Color,
-    isDataSaverActive: Boolean = false,
     playbackEnabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
@@ -112,14 +109,12 @@ internal fun HomeWallpaperBackdrop(
             configuration.screenWidthDp,
             configuration.screenHeightDp,
             density.density,
-            isDataSaverActive,
             appearance.blurRadiusDp
         ) {
             resolveHomeWallpaperDecodeSizePx(
                 screenWidthDp = configuration.screenWidthDp,
                 screenHeightDp = configuration.screenHeightDp,
                 density = density.density,
-                isDataSaverActive = isDataSaverActive,
                 blurRadiusDp = appearance.blurRadiusDp
             )
         }
@@ -147,7 +142,7 @@ internal fun HomeWallpaperBackdrop(
         com.android.purebilibili.core.ui.wallpaper.WallpaperMedia(
             uri = wallpaperUri,
             imageModel = imageRequest,
-            playbackEnabled = playbackEnabled && !isDataSaverActive,
+            playbackEnabled = playbackEnabled,
             modifier = imageModifier
         )
         Box(

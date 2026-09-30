@@ -99,7 +99,6 @@ fun GlassVideoCard(
     isReturningFromVideoDetail: Boolean = false,
     isQuickReturningFromVideoDetail: Boolean = false,
     scrollLiteModeEnabled: Boolean = false,
-    isDataSaverActive: Boolean = false,
     preferLowQualityCover: Boolean = false,
     showCoverGlassBadges: Boolean = false,
     showInfoGlassBadges: Boolean = false,
@@ -143,7 +142,7 @@ fun GlassVideoCard(
     //  [新增] 长按删除菜单状态
     var showDismissMenu by remember { mutableStateOf(false) }
     
-    val useLowQualityCover = isDataSaverActive && preferLowQualityCover
+    val useLowQualityCover = preferLowQualityCover
     val coverUrl = remember(video.bvid, useLowQualityCover) {
         FormatUtils.resolveVideoCoverUrl(
             if (video.pic.startsWith("//")) "https:${video.pic}" else video.pic,

@@ -19,7 +19,6 @@ object SettingsSearchFocusIds {
     const val PLAYBACK_INTERACTION = "playback_interaction"
     const val PLAYBACK_FULLSCREEN = "playback_fullscreen"
     const val PLAYBACK_NETWORK = "playback_network"
-    const val PLAYBACK_DATA_SAVER = "playback_data_saver"
 
     const val BOTTOM_BAR_BEHAVIOR = "bottom_bar_behavior"
     const val BOTTOM_BAR_START = "bottom_bar_start"
@@ -93,9 +92,8 @@ internal fun resolvePlaybackSettingsScrollIndex(
         SettingsSearchFocusIds.PLAYBACK_GESTURE -> 6
         SettingsSearchFocusIds.PLAYBACK_DEBUG -> 8
         SettingsSearchFocusIds.PLAYBACK_NETWORK -> 10
-        SettingsSearchFocusIds.PLAYBACK_DATA_SAVER -> 12
-        SettingsSearchFocusIds.PLAYBACK_INTERACTION -> 14
-        SettingsSearchFocusIds.PLAYBACK_FULLSCREEN -> 16
+        SettingsSearchFocusIds.PLAYBACK_INTERACTION -> 13
+        SettingsSearchFocusIds.PLAYBACK_FULLSCREEN -> 15
         else -> null
     }
 }

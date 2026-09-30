@@ -17,10 +17,6 @@ enum class OnboardingSettingsProfile(
     PERFORMANCE(
         title = "流畅优先",
         subtitle = "安卓液态玻璃与悬浮底栏，保留核心过渡"
-    ),
-    DATA_SAVER(
-        title = "省流量",
-        subtitle = "移动网络自动省流量，首页封面更克制"
     )
 }
 
@@ -34,8 +30,6 @@ data class OnboardingSettingsGuidePreset(
     val topTabOrderIds: List<String>,
     val topTabVisibleIds: Set<String>,
     val homeTopLayoutOrder: HomeTopLayoutOrder,
-    val dataSaverMode: SettingsManager.DataSaverMode,
-    val lowQualityHomeCoverInDataSaver: Boolean,
     val cardTransitionEnabled: Boolean,
     val summaryLines: List<String>
 )
@@ -67,8 +61,6 @@ fun resolveOnboardingSettingsGuidePreset(
             topTabOrderIds = DEFAULT_ONBOARDING_TOP_TAB_IDS,
             topTabVisibleIds = DEFAULT_ONBOARDING_TOP_TAB_IDS.toSet(),
             homeTopLayoutOrder = HomeTopLayoutOrder.SEARCH_THEN_TABS,
-            dataSaverMode = SettingsManager.DataSaverMode.MOBILE_ONLY,
-            lowQualityHomeCoverInDataSaver = false,
             cardTransitionEnabled = true,
             summaryLines = sharedSummary
         )
@@ -83,26 +75,8 @@ fun resolveOnboardingSettingsGuidePreset(
             topTabOrderIds = DEFAULT_ONBOARDING_TOP_TAB_IDS,
             topTabVisibleIds = DEFAULT_ONBOARDING_TOP_TAB_IDS.toSet(),
             homeTopLayoutOrder = HomeTopLayoutOrder.SEARCH_THEN_TABS,
-            dataSaverMode = SettingsManager.DataSaverMode.MOBILE_ONLY,
-            lowQualityHomeCoverInDataSaver = false,
             cardTransitionEnabled = true,
             summaryLines = sharedSummary + "保留核心视频过渡"
-        )
-
-        OnboardingSettingsProfile.DATA_SAVER -> OnboardingSettingsGuidePreset(
-            profile = profile,
-            bottomBarFloating = true,
-            bottomBarLiquidGlassEnabled = true,
-            androidNativeLiquidGlassEnabled = true,
-            bottomBarSearchEnabled = false,
-            topTabLabelMode = SettingsManager.TopTabLabelMode.TEXT_ONLY,
-            topTabOrderIds = DEFAULT_ONBOARDING_TOP_TAB_IDS,
-            topTabVisibleIds = DEFAULT_ONBOARDING_TOP_TAB_IDS.toSet(),
-            homeTopLayoutOrder = HomeTopLayoutOrder.SEARCH_THEN_TABS,
-            dataSaverMode = SettingsManager.DataSaverMode.MOBILE_ONLY,
-            lowQualityHomeCoverInDataSaver = true,
-            cardTransitionEnabled = true,
-            summaryLines = sharedSummary + "省流量时首页封面使用低清晰度"
         )
     }
 }
@@ -124,10 +98,5 @@ suspend fun applyOnboardingSettingsGuidePreset(
     SettingsManager.setTopTabOrder(context, preset.topTabOrderIds)
     SettingsManager.setTopTabVisibleTabs(context, preset.topTabVisibleIds)
     SettingsManager.setHomeTopLayoutOrder(context, preset.homeTopLayoutOrder)
-    SettingsManager.setDataSaverMode(context, preset.dataSaverMode)
-    SettingsManager.setLowQualityHomeCoverInDataSaver(
-        context = context,
-        value = preset.lowQualityHomeCoverInDataSaver
-    )
     SettingsManager.setCardTransitionEnabled(context, preset.cardTransitionEnabled)
 }

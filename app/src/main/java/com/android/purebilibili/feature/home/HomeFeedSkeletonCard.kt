@@ -66,7 +66,6 @@ internal fun HomeFeedSkeletonCard(
     pulse: Float,
     wallpaperTintEnabled: Boolean,
     wallpaperEffectMode: HomeWallpaperEffectMode,
-    isDataSaverActive: Boolean,
     coverAspectRatio: Float = VIDEO_SHARED_COVER_ASPECT_RATIO,
     modifier: Modifier = Modifier
 ) {
@@ -77,13 +76,11 @@ internal fun HomeFeedSkeletonCard(
         wallpaperTintEnabled,
         wallpaperEffectMode,
         isDarkCardTheme,
-        isDataSaverActive
     ) {
         resolveHomeCardInfoSurfaceAppearance(
             wallpaperTintEnabled = wallpaperTintEnabled,
             wallpaperEffectMode = wallpaperEffectMode,
             isDarkTheme = isDarkCardTheme,
-            isDataSaverActive = isDataSaverActive
         )
     }
     val blockColor = rememberHomeFeedSkeletonBlockColor(

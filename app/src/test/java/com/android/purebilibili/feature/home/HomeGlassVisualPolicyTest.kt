@@ -137,7 +137,6 @@ class HomeGlassVisualPolicyTest {
             hasWallpaper = false,
             effectMode = HomeWallpaperEffectMode.SOFT_BLUR,
             isDarkTheme = false,
-            isDataSaverActive = false
         )
 
         assertEquals(false, appearance.visible)
@@ -151,7 +150,6 @@ class HomeGlassVisualPolicyTest {
             hasWallpaper = true,
             effectMode = HomeWallpaperEffectMode.SOFT_BLUR,
             isDarkTheme = false,
-            isDataSaverActive = false
         )
 
         assertEquals(true, appearance.visible)
@@ -162,31 +160,11 @@ class HomeGlassVisualPolicyTest {
     }
 
     @Test
-    fun homeWallpaperBackdropUsesConservativeTintInDataSaver() {
-        val normal = resolveHomeWallpaperBackdropAppearance(
-            hasWallpaper = true,
-            effectMode = HomeWallpaperEffectMode.SOFT_BLUR,
-            isDarkTheme = false,
-            isDataSaverActive = false
-        )
-        val dataSaver = resolveHomeWallpaperBackdropAppearance(
-            hasWallpaper = true,
-            effectMode = HomeWallpaperEffectMode.SOFT_BLUR,
-            isDarkTheme = false,
-            isDataSaverActive = true
-        )
-
-        assertTrue(dataSaver.detailAlpha < normal.detailAlpha)
-        assertTrue(dataSaver.baseBackgroundAlpha > normal.baseBackgroundAlpha)
-    }
-
-    @Test
     fun homeWallpaperBackdropCanUseOriginalWallpaperWithoutBlur() {
         val appearance = resolveHomeWallpaperBackdropAppearance(
             hasWallpaper = true,
             effectMode = HomeWallpaperEffectMode.ORIGINAL,
             isDarkTheme = false,
-            isDataSaverActive = false
         )
 
         assertEquals(true, appearance.visible)
@@ -200,13 +178,11 @@ class HomeGlassVisualPolicyTest {
             hasWallpaper = true,
             effectMode = HomeWallpaperEffectMode.SOFT_BLUR,
             isDarkTheme = false,
-            isDataSaverActive = false
         )
         val strongBlur = resolveHomeWallpaperBackdropAppearance(
             hasWallpaper = true,
             effectMode = HomeWallpaperEffectMode.STRONG_BLUR,
             isDarkTheme = false,
-            isDataSaverActive = false
         )
 
         assertTrue(strongBlur.blurRadiusDp > softBlur.blurRadiusDp)
@@ -334,13 +310,11 @@ class HomeGlassVisualPolicyTest {
             hasWallpaper = true,
             effectMode = HomeWallpaperEffectMode.SOFT_BLUR,
             isDarkTheme = false,
-            isDataSaverActive = false
         )
         val global = resolveHomeWallpaperBackdropAppearance(
             hasWallpaper = true,
             effectMode = HomeWallpaperEffectMode.SOFT_BLUR,
             isDarkTheme = false,
-            isDataSaverActive = false,
             globalWallpaper = true
         )
 
@@ -351,45 +325,13 @@ class HomeGlassVisualPolicyTest {
     }
 
     @Test
-    fun globalHomeWallpaperBackdropGetsMoreConservativeInDataSaver() {
-        val normal = resolveHomeWallpaperBackdropAppearance(
-            hasWallpaper = true,
-            effectMode = HomeWallpaperEffectMode.SOFT_BLUR,
-            isDarkTheme = false,
-            isDataSaverActive = false,
-            globalWallpaper = true
-        )
-        val dataSaver = resolveHomeWallpaperBackdropAppearance(
-            hasWallpaper = true,
-            effectMode = HomeWallpaperEffectMode.SOFT_BLUR,
-            isDarkTheme = false,
-            isDataSaverActive = true,
-            globalWallpaper = true
-        )
-
-        assertTrue(dataSaver.baseBackgroundAlpha > normal.baseBackgroundAlpha)
-        assertTrue(dataSaver.detailAlpha < normal.detailAlpha)
-        assertTrue(dataSaver.blurRadiusDp <= 8f)
-    }
-
-    @Test
-    fun homeWallpaperDecodeSizeCapsLargeScreensAndDataSaver() {
+    fun homeWallpaperDecodeSizeCapsLargeScreens() {
         assertEquals(
             1080 to 1920,
             resolveHomeWallpaperDecodeSizePx(
                 screenWidthDp = 1200,
                 screenHeightDp = 900,
                 density = 3f,
-                isDataSaverActive = false
-            )
-        )
-        assertEquals(
-            720 to 1280,
-            resolveHomeWallpaperDecodeSizePx(
-                screenWidthDp = 1200,
-                screenHeightDp = 900,
-                density = 3f,
-                isDataSaverActive = true
             )
         )
         assertEquals(
@@ -398,7 +340,6 @@ class HomeGlassVisualPolicyTest {
                 screenWidthDp = 1200,
                 screenHeightDp = 900,
                 density = 3f,
-                isDataSaverActive = false,
                 blurRadiusDp = 24f
             )
         )
@@ -410,7 +351,6 @@ class HomeGlassVisualPolicyTest {
             wallpaperTintEnabled = true,
             wallpaperEffectMode = HomeWallpaperEffectMode.SOFT_BLUR,
             isDarkTheme = false,
-            isDataSaverActive = false
         )
 
         assertEquals(true, appearance.useTintedSurface)
@@ -419,28 +359,19 @@ class HomeGlassVisualPolicyTest {
     }
 
     @Test
-    fun cardInfoSurfaceGetsDenserInDarkThemeAndDataSaver() {
+    fun cardInfoSurfaceGetsDenserInDarkTheme() {
         val light = resolveHomeCardInfoSurfaceAppearance(
             wallpaperTintEnabled = true,
             wallpaperEffectMode = HomeWallpaperEffectMode.SOFT_BLUR,
             isDarkTheme = false,
-            isDataSaverActive = false
         )
         val dark = resolveHomeCardInfoSurfaceAppearance(
             wallpaperTintEnabled = true,
             wallpaperEffectMode = HomeWallpaperEffectMode.SOFT_BLUR,
             isDarkTheme = true,
-            isDataSaverActive = false
-        )
-        val dataSaver = resolveHomeCardInfoSurfaceAppearance(
-            wallpaperTintEnabled = true,
-            wallpaperEffectMode = HomeWallpaperEffectMode.SOFT_BLUR,
-            isDarkTheme = false,
-            isDataSaverActive = true
         )
 
         assertTrue(dark.containerAlpha > light.containerAlpha)
-        assertTrue(dataSaver.containerAlpha > light.containerAlpha)
     }
 
     @Test
@@ -449,13 +380,11 @@ class HomeGlassVisualPolicyTest {
             wallpaperTintEnabled = true,
             wallpaperEffectMode = HomeWallpaperEffectMode.SOFT_BLUR,
             isDarkTheme = false,
-            isDataSaverActive = false
         )
         val original = resolveHomeCardInfoSurfaceAppearance(
             wallpaperTintEnabled = true,
             wallpaperEffectMode = HomeWallpaperEffectMode.ORIGINAL,
             isDarkTheme = false,
-            isDataSaverActive = false
         )
 
         assertTrue(original.containerAlpha < softBlur.containerAlpha)
@@ -469,13 +398,11 @@ class HomeGlassVisualPolicyTest {
             wallpaperTintEnabled = true,
             wallpaperEffectMode = HomeWallpaperEffectMode.SOFT_BLUR,
             isDarkTheme = false,
-            isDataSaverActive = false
         )
         val strongBlur = resolveHomeCardInfoSurfaceAppearance(
             wallpaperTintEnabled = true,
             wallpaperEffectMode = HomeWallpaperEffectMode.STRONG_BLUR,
             isDarkTheme = false,
-            isDataSaverActive = false
         )
 
         assertTrue(strongBlur.containerAlpha > softBlur.containerAlpha)
@@ -487,7 +414,6 @@ class HomeGlassVisualPolicyTest {
             wallpaperTintEnabled = true,
             wallpaperEffectMode = HomeWallpaperEffectMode.SOFT_BLUR,
             isDarkTheme = false,
-            isDataSaverActive = false,
             infoGlassMode = HomeCardInfoGlassMode.REALTIME_BLUR,
             hasWallpaperHazeState = true,
             hasLayerBackdrop = true,
@@ -497,7 +423,6 @@ class HomeGlassVisualPolicyTest {
             wallpaperTintEnabled = true,
             wallpaperEffectMode = HomeWallpaperEffectMode.SOFT_BLUR,
             isDarkTheme = false,
-            isDataSaverActive = false,
             infoGlassMode = HomeCardInfoGlassMode.REALTIME_LIQUID_GLASS,
             hasWallpaperHazeState = true,
             hasLayerBackdrop = true,
@@ -507,7 +432,6 @@ class HomeGlassVisualPolicyTest {
             wallpaperTintEnabled = true,
             wallpaperEffectMode = HomeWallpaperEffectMode.SOFT_BLUR,
             isDarkTheme = false,
-            isDataSaverActive = false,
             infoGlassMode = HomeCardInfoGlassMode.BLUR_AND_LIQUID,
             hasWallpaperHazeState = true,
             hasLayerBackdrop = true,
@@ -529,7 +453,6 @@ class HomeGlassVisualPolicyTest {
             wallpaperTintEnabled = true,
             wallpaperEffectMode = HomeWallpaperEffectMode.SOFT_BLUR,
             isDarkTheme = false,
-            isDataSaverActive = false,
             infoGlassMode = HomeCardInfoGlassMode.REALTIME_BLUR,
             hasWallpaperHazeState = false,
             hasLayerBackdrop = true,
@@ -546,7 +469,6 @@ class HomeGlassVisualPolicyTest {
                 infoGlassMode = HomeCardInfoGlassMode.REALTIME_LIQUID_GLASS,
                 hasLayerBackdrop = false,
                 blurEnabled = true,
-                isDataSaverActive = false
             )
         )
         assertTrue(
@@ -554,27 +476,6 @@ class HomeGlassVisualPolicyTest {
                 infoGlassMode = HomeCardInfoGlassMode.REALTIME_LIQUID_GLASS,
                 hasLayerBackdrop = true,
                 blurEnabled = true,
-                isDataSaverActive = false
-            )
-        )
-    }
-
-    @Test
-    fun cardInfoRealtimeEffectsDisabledInDataSaver() {
-        assertFalse(
-            shouldUseRealtimeHomeCardInfoBlur(
-                infoGlassMode = HomeCardInfoGlassMode.BLUR_AND_LIQUID,
-                hasWallpaperHazeState = true,
-                blurEnabled = true,
-                isDataSaverActive = true
-            )
-        )
-        assertFalse(
-            shouldUseRealtimeHomeCardInfoLiquidGlass(
-                infoGlassMode = HomeCardInfoGlassMode.BLUR_AND_LIQUID,
-                hasLayerBackdrop = true,
-                blurEnabled = true,
-                isDataSaverActive = true
             )
         )
     }

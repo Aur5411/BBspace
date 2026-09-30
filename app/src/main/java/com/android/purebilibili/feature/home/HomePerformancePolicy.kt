@@ -9,7 +9,6 @@ internal data class HomePerformanceConfig(
     val bottomBarLiquidGlassEnabled: Boolean,
     val cardAnimationEnabled: Boolean,
     val cardTransitionEnabled: Boolean,
-    val isDataSaverActive: Boolean,
     val preloadAheadCount: Int
 ) {
     val isAnyLiquidGlassEnabled: Boolean
@@ -19,23 +18,19 @@ internal data class HomePerformanceConfig(
 }
 
 internal fun resolveHomePreloadAheadCount(
-    isDataSaverActive: Boolean,
     normalPreloadAheadCount: Int
 ): Int {
-    if (isDataSaverActive) return 0
     return normalPreloadAheadCount.coerceAtLeast(0).coerceAtMost(2)
 }
 
 internal fun resolveHomeCoverPreloadRange(
-    isDataSaverActive: Boolean,
     isScrollInProgress: Boolean,
     lastVisibleIndex: Int,
     totalItemCount: Int,
     preloadAheadCount: Int
 ): IntRange? {
-    if (isDataSaverActive || isScrollInProgress || totalItemCount <= 0) return null
+    if (isScrollInProgress || totalItemCount <= 0) return null
     val effectiveAheadCount = resolveHomePreloadAheadCount(
-        isDataSaverActive = false,
         normalPreloadAheadCount = preloadAheadCount
     )
     if (effectiveAheadCount <= 0) return null
@@ -59,13 +54,11 @@ internal fun resolveHomePerformanceConfig(
     androidNativeLiquidGlassEnabled: Boolean = true,
     cardAnimationEnabled: Boolean,
     cardTransitionEnabled: Boolean,
-    isDataSaverActive: Boolean,
     smartVisualGuardEnabled: Boolean,
     normalPreloadAheadCount: Int = 5
 ): HomePerformanceConfig {
     // Feature retired: keep parameter for compatibility, but never apply runtime smoothness downgrade.
     val shouldPrioritizeSmoothness = false
-    val effectiveDataSaver = isDataSaverActive
     // The legacy per-surface values remain readable for settings migration/import compatibility,
     // but the Android liquid-glass switch is now the only runtime enablement source.
     val effectiveTopBarLiquidGlass = androidNativeLiquidGlassEnabled
@@ -74,7 +67,6 @@ internal fun resolveHomePerformanceConfig(
     val effectivePreloadAheadCount = when {
         shouldPrioritizeSmoothness -> normalPreloadAheadCount.coerceAtLeast(0).coerceAtMost(2)
         else -> resolveHomePreloadAheadCount(
-            isDataSaverActive = effectiveDataSaver,
             normalPreloadAheadCount = normalPreloadAheadCount
         )
     }
@@ -87,7 +79,6 @@ internal fun resolveHomePerformanceConfig(
         bottomBarLiquidGlassEnabled = effectiveBottomBarLiquidGlass,
         cardAnimationEnabled = cardAnimationEnabled,
         cardTransitionEnabled = cardTransitionEnabled,
-        isDataSaverActive = effectiveDataSaver,
         preloadAheadCount = effectivePreloadAheadCount
     )
 }

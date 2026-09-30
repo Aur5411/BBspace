@@ -9,7 +9,7 @@ import kotlin.test.assertTrue
 class HomePerformancePolicyTest {
 
     @Test
-    fun keepsHomeVisualSettingsWhenDataSaverOff() {
+    fun keepsHomeVisualSettings() {
         val config = resolveHomePerformanceConfig(
             supportsIndependentLiquidGlass = true,
             headerBlurEnabled = true,
@@ -19,7 +19,6 @@ class HomePerformancePolicyTest {
             androidNativeLiquidGlassEnabled = true,
             cardAnimationEnabled = false,
             cardTransitionEnabled = true,
-            isDataSaverActive = false,
             smartVisualGuardEnabled = false,
             normalPreloadAheadCount = 5
         )
@@ -31,28 +30,7 @@ class HomePerformancePolicyTest {
         assertTrue(config.isAnyLiquidGlassEnabled)
         assertFalse(config.cardAnimationEnabled)
         assertTrue(config.cardTransitionEnabled)
-        assertFalse(config.isDataSaverActive)
         assertEquals(2, config.preloadAheadCount)
-    }
-
-    @Test
-    fun dataSaverDisablesPreloadAhead() {
-        val config = resolveHomePerformanceConfig(
-            supportsIndependentLiquidGlass = true,
-            headerBlurEnabled = true,
-            bottomBarBlurEnabled = true,
-            topBarLiquidGlassEnabled = true,
-            bottomBarLiquidGlassEnabled = true,
-            androidNativeLiquidGlassEnabled = true,
-            cardAnimationEnabled = true,
-            cardTransitionEnabled = true,
-            isDataSaverActive = true,
-            smartVisualGuardEnabled = false,
-            normalPreloadAheadCount = 5
-        )
-
-        assertTrue(config.isDataSaverActive)
-        assertTrue(config.preloadAheadCount == 0)
     }
 
     @Test
@@ -66,12 +44,10 @@ class HomePerformancePolicyTest {
             androidNativeLiquidGlassEnabled = true,
             cardAnimationEnabled = true,
             cardTransitionEnabled = true,
-            isDataSaverActive = false,
             smartVisualGuardEnabled = true,
             normalPreloadAheadCount = 5
         )
 
-        assertFalse(config.isDataSaverActive)
         assertTrue(config.isAnyLiquidGlassEnabled)
         assertEquals(2, config.preloadAheadCount)
     }
@@ -86,7 +62,6 @@ class HomePerformancePolicyTest {
             bottomBarLiquidGlassEnabled = true,
             cardAnimationEnabled = true,
             cardTransitionEnabled = true,
-            isDataSaverActive = false,
             smartVisualGuardEnabled = false,
             normalPreloadAheadCount = 5
         )
@@ -98,7 +73,6 @@ class HomePerformancePolicyTest {
     fun coverPreloadRange_waitsUntilFeedScrollSettles() {
         assertNull(
             resolveHomeCoverPreloadRange(
-                isDataSaverActive = false,
                 isScrollInProgress = true,
                 lastVisibleIndex = 8,
                 totalItemCount = 20,
@@ -112,24 +86,10 @@ class HomePerformancePolicyTest {
         assertEquals(
             9 until 11,
             resolveHomeCoverPreloadRange(
-                isDataSaverActive = false,
                 isScrollInProgress = false,
                 lastVisibleIndex = 8,
                 totalItemCount = 20,
                 preloadAheadCount = 4
-            )
-        )
-    }
-
-    @Test
-    fun coverPreloadRange_disablesWhenDataSaverActive() {
-        assertNull(
-            resolveHomeCoverPreloadRange(
-                isDataSaverActive = true,
-                isScrollInProgress = false,
-                lastVisibleIndex = 8,
-                totalItemCount = 20,
-                preloadAheadCount = 2
             )
         )
     }
@@ -146,7 +106,6 @@ class HomePerformancePolicyTest {
             androidNativeLiquidGlassEnabled = false,
             cardAnimationEnabled = true,
             cardTransitionEnabled = true,
-            isDataSaverActive = false,
             smartVisualGuardEnabled = false,
             normalPreloadAheadCount = 5
         )
@@ -169,7 +128,6 @@ class HomePerformancePolicyTest {
             androidNativeLiquidGlassEnabled = false,
             cardAnimationEnabled = false,
             cardTransitionEnabled = false,
-            isDataSaverActive = false,
             smartVisualGuardEnabled = false,
         )
 
@@ -190,7 +148,6 @@ class HomePerformancePolicyTest {
             androidNativeLiquidGlassEnabled = true,
             cardAnimationEnabled = true,
             cardTransitionEnabled = true,
-            isDataSaverActive = false,
             smartVisualGuardEnabled = false,
             normalPreloadAheadCount = 5
         )

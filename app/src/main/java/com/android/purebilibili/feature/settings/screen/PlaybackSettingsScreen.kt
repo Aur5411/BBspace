@@ -1000,24 +1000,11 @@ fun PlaybackSettingsContent(
 
                         AppPreferenceDivider()
 
-                        // 📉 读取省流量模式，用于显示提示
-                        val dataSaverModeForHint by com.android.purebilibili.core.store.SettingsManager
-                            .getDataSaverMode(context).collectAsStateWithLifecycle(initialValue = com.android.purebilibili.core.store.SettingsManager.DataSaverMode.MOBILE_ONLY
-                            )
-                        val isDataSaverActive = dataSaverModeForHint != com.android.purebilibili.core.store.SettingsManager.DataSaverMode.OFF
-                        val effectiveQuality = resolveEffectiveMobileQuality(
-                            rawMobileQuality = mobileQuality,
-                            isDataSaverActive = isDataSaverActive
-                        )
-                        val effectiveQualityLabel = getQualityLabel(effectiveQuality)
-
                         SettingsSingleChoicePreference(
                             title = "移动网络默认画质：${getQualityLabel(mobileQuality)}",
                             subtitle = when {
                                 autoHighestQualityEnabled ->
                                     "已被自动最高画质覆盖；仅作为关闭自动最高后的流量偏好保留"
-                                isDataSaverActive && mobileQuality > effectiveQuality ->
-                                    "省流量模式当前实际最高为 $effectiveQualityLabel"
                                 else -> resolveDefaultQualitySubtitle(
                                     rawQuality = mobileQuality,
                                     fallbackSubtitle = "仅移动网络环境生效",
@@ -1057,57 +1044,6 @@ fun PlaybackSettingsContent(
                                 }
                             }
                         )
-
-                        if (isDataSaverActive && mobileQuality > effectiveQuality) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 2.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                AppText(
-                                    text = "省流量模式已限制为最高480P",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = iOSGreen.copy(alpha = 0.8f)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            // 📉 省流量模式已按用户要求整体移除
-
-            item {
-                Box(modifier = Modifier.entrance()) {
-                    AppCard(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        shape = AppCardShape.Semantic(ContainerLevel.Dialog),
-                        colors = AppCardDefaults.colors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
-                        )
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            AppIcon(
-                                com.android.purebilibili.feature.settings.rememberMaterialSymbol(com.android.purebilibili.R.drawable.ms_info_24),
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(10.dp))
-                            AppText(
-                                "省流量模式会禁用预加载、限制视频最高480P；首页封面是否降清晰度由上方开关决定。",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                            )
-                        }
                     }
                 }
             }

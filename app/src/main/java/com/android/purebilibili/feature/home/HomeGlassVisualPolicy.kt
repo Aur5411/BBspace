@@ -159,7 +159,6 @@ internal fun resolveHomeCardWallpaperSurfaceMode(
     wallpaperIsStatic: Boolean,
     backdropReady: Boolean,
     blurEnabled: Boolean,
-    isDataSaverActive: Boolean,
     lowBlurBudgetForced: Boolean,
     sdkInt: Int,
 ): HomeCardWallpaperSurfaceMode {
@@ -170,7 +169,6 @@ internal fun resolveHomeCardWallpaperSurfaceMode(
         wallpaperIsStatic &&
             backdropReady &&
             blurEnabled &&
-            !isDataSaverActive &&
             !lowBlurBudgetForced &&
             sdkInt >= 31
     ) {
@@ -261,7 +259,6 @@ internal fun resolveHomeWallpaperBackdropAppearance(
     hasWallpaper: Boolean,
     effectMode: HomeWallpaperEffectMode = HomeWallpaperEffectMode.SOFT_BLUR,
     isDarkTheme: Boolean,
-    isDataSaverActive: Boolean,
     globalWallpaper: Boolean = false
 ): HomeWallpaperBackdropAppearance {
     if (!hasWallpaper || effectMode == HomeWallpaperEffectMode.OFF) {
@@ -276,17 +273,6 @@ internal fun resolveHomeWallpaperBackdropAppearance(
     }
 
     if (globalWallpaper) {
-        if (isDataSaverActive) {
-            return HomeWallpaperBackdropAppearance(
-                visible = true,
-                baseBackgroundAlpha = if (isDarkTheme) 0.70f else 0.58f,
-                detailAlpha = 0.08f,
-                scrimAlpha = if (isDarkTheme) 0.28f else 0.14f,
-                bottomScrimAlpha = if (isDarkTheme) 0.38f else 0.26f,
-                blurRadiusDp = 8f
-            )
-        }
-
         return when (effectMode) {
             HomeWallpaperEffectMode.ORIGINAL -> HomeWallpaperBackdropAppearance(
                 visible = true,
@@ -335,15 +321,6 @@ internal fun resolveHomeWallpaperBackdropAppearance(
             blurRadiusDp = 60f
         )
 
-        isDataSaverActive -> HomeWallpaperBackdropAppearance(
-            visible = true,
-            baseBackgroundAlpha = if (isDarkTheme) 0.48f else 0.34f,
-            detailAlpha = 0.16f,
-            scrimAlpha = if (isDarkTheme) 0.20f else 0.08f,
-            bottomScrimAlpha = if (isDarkTheme) 0.28f else 0.18f,
-            blurRadiusDp = 18f
-        )
-
         isDarkTheme -> HomeWallpaperBackdropAppearance(
             visible = true,
             baseBackgroundAlpha = 0.34f,
@@ -377,7 +354,6 @@ internal fun resolveHomeWallpaperDecodeSizePx(
     screenWidthDp: Int,
     screenHeightDp: Int,
     density: Float,
-    isDataSaverActive: Boolean,
     blurRadiusDp: Float = 0f,
 ): Pair<Int, Int> {
     val safeDensity = density.takeIf { it.isFinite() && it > 0f } ?: 1f
@@ -386,13 +362,11 @@ internal fun resolveHomeWallpaperDecodeSizePx(
     val shortSide = min(widthPx, heightPx)
     val longSide = max(widthPx, heightPx)
     val maxShortSide = when {
-        isDataSaverActive -> 720
         blurRadiusDp >= 24f -> 540
         blurRadiusDp >= 12f -> 720
         else -> 1080
     }
     val maxLongSide = when {
-        isDataSaverActive -> 1280
         blurRadiusDp >= 24f -> 960
         blurRadiusDp >= 12f -> 1280
         else -> 1920
@@ -406,11 +380,10 @@ internal fun resolveHomeWallpaperDecodeSizePx(
 internal fun shouldUseRealtimeHomeCardInfoBlur(
     infoGlassMode: HomeCardInfoGlassMode,
     hasWallpaperHazeState: Boolean,
-    blurEnabled: Boolean,
-    isDataSaverActive: Boolean
+    blurEnabled: Boolean
 ): Boolean {
     if (!infoGlassMode.usesRealtimeBlur) return false
-    if (!hasWallpaperHazeState || !blurEnabled || isDataSaverActive) return false
+    if (!hasWallpaperHazeState || !blurEnabled) return false
     return true
 }
 
@@ -420,11 +393,10 @@ internal fun shouldUseRealtimeHomeCardInfoBlur(
 internal fun shouldUseRealtimeHomeCardInfoLiquidGlass(
     infoGlassMode: HomeCardInfoGlassMode,
     hasLayerBackdrop: Boolean,
-    blurEnabled: Boolean,
-    isDataSaverActive: Boolean
+    blurEnabled: Boolean
 ): Boolean {
     if (!infoGlassMode.usesRealtimeLiquidGlass) return false
-    if (!hasLayerBackdrop || !blurEnabled || isDataSaverActive) return false
+    if (!hasLayerBackdrop || !blurEnabled) return false
     return true
 }
 
@@ -432,7 +404,6 @@ internal fun resolveHomeCardInfoSurfaceAppearance(
     wallpaperTintEnabled: Boolean,
     wallpaperEffectMode: HomeWallpaperEffectMode = HomeWallpaperEffectMode.SOFT_BLUR,
     isDarkTheme: Boolean,
-    isDataSaverActive: Boolean,
     infoGlassMode: HomeCardInfoGlassMode = HomeCardInfoGlassMode.OFF,
     hasWallpaperHazeState: Boolean = false,
     hasLayerBackdrop: Boolean = false,
@@ -441,14 +412,12 @@ internal fun resolveHomeCardInfoSurfaceAppearance(
     val useRealtimeHaze = shouldUseRealtimeHomeCardInfoBlur(
         infoGlassMode = infoGlassMode,
         hasWallpaperHazeState = hasWallpaperHazeState,
-        blurEnabled = blurEnabled,
-        isDataSaverActive = isDataSaverActive
+        blurEnabled = blurEnabled
     )
     val useRealtimeLiquidGlass = shouldUseRealtimeHomeCardInfoLiquidGlass(
         infoGlassMode = infoGlassMode,
         hasLayerBackdrop = hasLayerBackdrop,
-        blurEnabled = blurEnabled,
-        isDataSaverActive = isDataSaverActive
+        blurEnabled = blurEnabled
     )
     val glassActive = useRealtimeHaze || useRealtimeLiquidGlass
 
@@ -470,7 +439,6 @@ internal fun resolveHomeCardInfoSurfaceAppearance(
             wallpaperEffectMode == HomeWallpaperEffectMode.ORIGINAL -> 0.12f
             wallpaperEffectMode == HomeWallpaperEffectMode.STRONG_BLUR && isDarkTheme -> 0.50f
             wallpaperEffectMode == HomeWallpaperEffectMode.STRONG_BLUR -> 0.32f
-            isDataSaverActive -> if (isDarkTheme) 0.56f else 0.36f
             isDarkTheme -> 0.36f
             else -> 0.16f
         }

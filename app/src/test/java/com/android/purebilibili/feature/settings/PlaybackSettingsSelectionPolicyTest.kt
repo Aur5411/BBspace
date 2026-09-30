@@ -214,13 +214,6 @@ class PlaybackSettingsSelectionPolicyTest {
     }
 
     @Test
-    fun `resolveEffectiveMobileQuality should clamp to 480p when data saver active`() {
-        assertEquals(32, resolveEffectiveMobileQuality(rawMobileQuality = 80, isDataSaverActive = true))
-        assertEquals(16, resolveEffectiveMobileQuality(rawMobileQuality = 16, isDataSaverActive = true))
-        assertEquals(80, resolveEffectiveMobileQuality(rawMobileQuality = 80, isDataSaverActive = false))
-    }
-
-    @Test
     fun `resolveDefaultPlaybackQualityOptions should only expose fixed quality tiers`() {
         val options = resolveDefaultPlaybackQualityOptions()
 

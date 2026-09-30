@@ -28,15 +28,6 @@ internal fun <T> resolveSelectionLabel(
     return options.find { it.value == selectedValue }?.label ?: fallbackLabel
 }
 
-internal fun resolveEffectiveMobileQuality(
-    rawMobileQuality: Int,
-    isDataSaverActive: Boolean,
-    maxQualityWhenSaverActive: Int = 32
-): Int {
-    if (!isDataSaverActive) return rawMobileQuality
-    return rawMobileQuality.coerceAtMost(maxQualityWhenSaverActive)
-}
-
 internal fun resolveSegmentedSwipeTargetIndex(
     currentIndex: Int,
     totalDragPx: Float,
