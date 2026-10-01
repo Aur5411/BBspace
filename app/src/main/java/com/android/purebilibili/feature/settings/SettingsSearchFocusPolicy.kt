@@ -173,8 +173,6 @@ internal fun resolveSettingsSceneDetailFocus(
     SettingsSearchTarget.EXPORT_LOGS,
     SettingsSearchTarget.OPEN_SOURCE_LICENSES,
     SettingsSearchTarget.OPEN_SOURCE_HOME,
-    SettingsSearchTarget.CHECK_UPDATE,
-    SettingsSearchTarget.VIEW_RELEASE_NOTES,
     SettingsSearchTarget.REPLAY_ONBOARDING,
     SettingsSearchTarget.TIPS,
     SettingsSearchTarget.OPEN_LINKS,

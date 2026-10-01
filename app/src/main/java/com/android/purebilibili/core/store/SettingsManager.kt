@@ -5941,7 +5941,6 @@ object SettingsManager {
     // ==========  用户行为分析 (Analytics) ==========
     
     private val KEY_ANALYTICS_ENABLED = booleanPreferencesKey("analytics_enabled")
-    private val KEY_AUTO_CHECK_APP_UPDATE = booleanPreferencesKey("auto_check_app_update")
     
     // --- Analytics 开关 (与崩溃追踪共享设置) ---
     fun getAnalyticsEnabled(context: Context): Flow<Boolean> = context.settingsDataStore.data
@@ -5952,40 +5951,6 @@ object SettingsManager {
         //  同步到 SharedPreferences，供 Application 同步读取
         context.getSharedPreferences("analytics_tracking", Context.MODE_PRIVATE)
             .edit().putBoolean("enabled", value).apply()
-    }
-
-    // ==========  应用更新 ==========
-    private val KEY_APP_UPDATE_CHANNEL = intPreferencesKey("app_update_channel")
-
-    /**
-     *  更新检测渠道
-     * - STABLE: 正式版渠道，仅检测稳定版本
-     * - BETA: 测试版渠道，同时检测预发布（Beta / RC）版本
-     */
-    enum class AppUpdateChannel(val value: Int, val label: String, val description: String) {
-        STABLE(0, "正式版", "仅检测稳定版本"),
-        BETA(1, "测试版", "同时检测测试版与预发布版本");
-
-        companion object {
-            fun fromValue(value: Int): AppUpdateChannel = entries.find { it.value == value } ?: STABLE
-        }
-    }
-
-    fun getAutoCheckAppUpdate(context: Context): Flow<Boolean> = context.settingsDataStore.data
-        .map { preferences -> preferences[KEY_AUTO_CHECK_APP_UPDATE] ?: true } // 默认开启
-
-    suspend fun setAutoCheckAppUpdate(context: Context, value: Boolean) {
-        context.settingsDataStore.edit { preferences -> preferences[KEY_AUTO_CHECK_APP_UPDATE] = value }
-    }
-
-    // --- 更新检测渠道 (默认正式版) ---
-    fun getAppUpdateChannel(context: Context): Flow<AppUpdateChannel> = context.settingsDataStore.data
-        .map { preferences ->
-            AppUpdateChannel.fromValue(preferences[KEY_APP_UPDATE_CHANNEL] ?: AppUpdateChannel.STABLE.value)
-        }
-
-    suspend fun setAppUpdateChannel(context: Context, channel: AppUpdateChannel) {
-        context.settingsDataStore.edit { preferences -> preferences[KEY_APP_UPDATE_CHANNEL] = channel.value }
     }
     
     // ==========  隐私无痕模式 ==========
@@ -7877,6 +7842,41 @@ object SettingsManager {
         )
     }
 
+    /**
+     * 播放相关设置另有 SharedPreferences("mini_player") 镜像，供生命周期回调同步读取
+     * （[getBackgroundPlaybackEnabledSync] 等）。
+     *
+     * 设置页读的是 DataStore，而播放决策读的是镜像——任何绕过 setter 的批量写入
+     * （设置分享导入、内置默认档）都必须回写镜像，否则会出现
+     * 「设置里显示已开启、运行时仍按关闭处理」的错位。
+     */
+    private fun syncMiniPlayerMirrors(context: Context, preferences: Preferences) {
+        context.getSharedPreferences("mini_player", Context.MODE_PRIVATE)
+            .edit()
+            .putInt("mode", preferences[KEY_MINI_PLAYER_MODE] ?: MiniPlayerMode.OFF.value)
+            .putBoolean(
+                "stop_playback_on_exit",
+                preferences[KEY_STOP_PLAYBACK_ON_EXIT] ?: false
+            )
+            .putBoolean(
+                "background_playback_enabled",
+                preferences[KEY_BACKGROUND_PLAYBACK_ENABLED] ?: false
+            )
+            .putBoolean("audio_focus_enabled", preferences[KEY_AUDIO_FOCUS_ENABLED] ?: true)
+            .putBoolean(
+                "audio_mode_auto_pip_enabled",
+                preferences[KEY_AUDIO_MODE_AUTO_PIP_ENABLED] ?: false
+            )
+            .apply()
+    }
+
+    /**
+     * 启动时把 DataStore 的播放设置回灌镜像，自愈历史版本遗留的错位。
+     */
+    suspend fun reconcileMiniPlayerMirrors(context: Context) {
+        syncMiniPlayerMirrors(context, context.settingsDataStore.data.first())
+    }
+
     suspend fun applyShareableSettingsSnapshot(
         context: Context,
         settings: Map<String, JsonElement>
@@ -7885,7 +7885,7 @@ object SettingsManager {
         val appliedKeys = mutableListOf<String>()
         val skippedKeys = mutableListOf<String>()
 
-        context.settingsDataStore.edit { preferences ->
+        val snapshot = context.settingsDataStore.edit { preferences ->
             settings.forEach { (key, value) ->
                 val definition = definitionsByKey[key]
                 when {
@@ -7895,6 +7895,9 @@ object SettingsManager {
                 }
             }
         }
+
+        // 导入可能改动播放开关，同步镜像，避免导入后行为与设置页显示不一致。
+        syncMiniPlayerMirrors(context, snapshot)
 
         return SettingsShareApplyResult(
             appliedKeys = appliedKeys.distinct().sorted(),

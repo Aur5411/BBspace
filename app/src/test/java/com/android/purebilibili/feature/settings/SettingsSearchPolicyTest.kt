@@ -51,9 +51,10 @@ class SettingsSearchPolicyTest {
 
     @Test
     fun prefixMatch_ranksBeforeGenericContains() {
-        val results = resolveSettingsSearchResults("检查")
+        // 「导出日志」是标题前缀命中；「下载位置」只在别名「导出目录」里包含「导出」。
+        val results = resolveSettingsSearchResults("导出")
 
-        assertEquals(SettingsSearchTarget.CHECK_UPDATE, results.firstOrNull()?.target)
+        assertEquals(SettingsSearchTarget.EXPORT_LOGS, results.firstOrNull()?.target)
     }
 
     @Test
@@ -396,13 +397,6 @@ class SettingsSearchPolicyTest {
         assertTrue(resolveSettingsSearchResults("首页壁纸").any { it.target == SettingsSearchTarget.HOME_FEED })
         assertTrue(resolveSettingsSearchResults("评论装扮").any { it.target == SettingsSearchTarget.INTERACTION_COMMENT })
         assertTrue(resolveSettingsSearchResults("WebDAV").any { it.target == SettingsSearchTarget.DATA_BACKUP })
-    }
-
-    @Test
-    fun queryByAutoCheckUpdate_hitsCheckUpdateEntry() {
-        val results = resolveSettingsSearchResults("自动检查更新")
-
-        assertTrue(results.any { it.target == SettingsSearchTarget.CHECK_UPDATE })
     }
 
     @Test

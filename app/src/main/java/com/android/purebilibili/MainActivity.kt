@@ -98,13 +98,6 @@ import com.android.purebilibili.feature.plugin.EyeProtectionOverlay
 import com.android.purebilibili.feature.plugin.PluginEffectHintHost
 import com.android.purebilibili.app.StartupRecovery
 import com.android.purebilibili.feature.settings.diagnostics.StartupRecoveryActivity
-import com.android.purebilibili.feature.settings.AppUpdateAutoCheckGate
-import com.android.purebilibili.feature.settings.AppUpdateCheckResult
-import com.android.purebilibili.feature.settings.AppUpdateChecker
-import com.android.purebilibili.feature.settings.AppUpdateDialogHost
-import com.android.purebilibili.feature.settings.AppUpdateDownloadState
-import com.android.purebilibili.feature.settings.AppUpdateDownloadStatus
-import com.android.purebilibili.feature.settings.AppUpdateInstallAction
 import com.android.purebilibili.feature.settings.AppLanguage
 import com.android.purebilibili.feature.settings.applyAppLanguage
 import com.android.purebilibili.core.theme.resolveEffectiveDynamicColorEnabled
@@ -135,16 +128,6 @@ import com.android.purebilibili.data.repository.VideoRepository
 import com.android.purebilibili.feature.cast.LocalProxyServer
 import com.android.purebilibili.feature.onboarding.USER_AGREEMENT_ACK_KEY
 import com.android.purebilibili.feature.settings.RELEASE_DISCLAIMER_ACK_KEY
-import com.android.purebilibili.feature.settings.completeAppUpdateDownload
-import com.android.purebilibili.feature.settings.downloadAppUpdateApk
-import com.android.purebilibili.feature.settings.failAppUpdateDownload
-import com.android.purebilibili.feature.settings.installDownloadedAppUpdate
-import com.android.purebilibili.feature.settings.resolveAppUpdateDialogTextColors
-import com.android.purebilibili.feature.settings.resolveBuildSourceSubtitle
-import com.android.purebilibili.feature.settings.resolveBuildSourceValue
-import com.android.purebilibili.feature.settings.resolveUpdateReleaseNotesText
-import com.android.purebilibili.feature.settings.selectPreferredAppUpdateAsset
-import com.android.purebilibili.feature.settings.shouldRunAppEntryAutoCheck
 import com.android.purebilibili.feature.settings.resolveThemePreferenceState
 import com.android.purebilibili.core.theme.resolveMd3DynamicColorEnabled
 import com.android.purebilibili.feature.screenshot.AppScreenshotCaptureMode
@@ -1282,31 +1265,11 @@ open class MainActivity : AppCompatActivity() {
             val context = LocalContext.current
             val uriHandler = LocalUriHandler.current
             val scope = rememberCoroutineScope()
-            var startupUpdateCheckResult by remember { mutableStateOf<AppUpdateCheckResult?>(null) }
-            // Legacy state remains only for the retired in-place dialog path below.
-            var startupUpdateDownloadState by remember { mutableStateOf(AppUpdateDownloadState()) }
             var pendingCrashSnapshotPath by remember {
                 mutableStateOf(Logger.getPendingCrashSnapshotPath(context))
             }
             var hasHandledCrashPrompt by remember { mutableStateOf(false) }
 
-            LaunchedEffect(Unit) {
-                val autoCheckUpdateEnabled = SettingsManager.getAutoCheckAppUpdate(context).first()
-                val updateChannel = SettingsManager.getAppUpdateChannel(context).first()
-                val gateAllowsCheck = AppUpdateAutoCheckGate.tryMarkChecked()
-                if (shouldRunAppEntryAutoCheck(autoCheckUpdateEnabled, gateAllowsCheck)) {
-                    AppUpdateChecker.check(
-                        currentVersion = BuildConfig.VERSION_NAME,
-                        currentVersionCode = BuildConfig.VERSION_CODE,
-                        includePrerelease = updateChannel == SettingsManager.AppUpdateChannel.BETA
-                    ).onSuccess { info ->
-                        if (info.isUpdateAvailable) {
-                            startupUpdateCheckResult = info
-                        }
-                    }
-                }
-            }
-            
             //  首次启动检测已移交 AppNavigation 处理
             // val prefs = remember { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
             // var showWelcome by remember { mutableStateOf(!prefs.getBoolean(KEY_FIRST_LAUNCH, false)) }
@@ -2006,183 +1969,6 @@ open class MainActivity : AppCompatActivity() {
                             .padding(WindowInsets.safeDrawing.asPaddingValues())
                             .padding(16.dp)
                     )
-
-                    startupUpdateCheckResult?.let { info ->
-                        AppUpdateDialogHost(
-                            update = info,
-                            onDismissRequest = { startupUpdateCheckResult = null },
-                        )
-                    }
-
-                    if (false) {
-                    startupUpdateCheckResult?.let { info ->
-                        val resolvedReleaseNotes = remember(info.releaseNotes) {
-                            resolveUpdateReleaseNotesText(info.releaseNotes)
-                        }
-                        val preferredAsset = remember(info.assets) {
-                            selectPreferredAppUpdateAsset(info.assets)
-                        }
-                        val releaseCommit = remember(info.buildMetadata?.gitCommitSha) {
-                            resolveBuildSourceValue(info.buildMetadata?.gitCommitSha, fallback = "未知")
-                        }
-                        val releaseWorkflowSubtitle = remember(info.buildMetadata?.workflowRunId, info.buildMetadata?.releaseTag) {
-                            resolveBuildSourceSubtitle(
-                                workflowRunId = info.buildMetadata?.workflowRunId,
-                                releaseTag = info.buildMetadata?.releaseTag
-                            )
-                        }
-                        val releaseVerificationEvidence = remember(info.verificationMetadata?.attestationUrl) {
-                            if (info.verificationMetadata?.attestationUrl?.isNotBlank() == true) {
-                                "GitHub Attestation"
-                            } else {
-                                "未提供"
-                            }
-                        }
-                        val isDialogDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-                        val dialogTextColors = remember(isDialogDarkTheme) {
-                            resolveAppUpdateDialogTextColors(
-                                isDarkTheme = isDialogDarkTheme
-                            )
-                        }
-                        val releaseNotesScrollState = rememberScrollState()
-                        AppAlertDialog(
-                            onDismissRequest = { startupUpdateCheckResult = null },
-                            title = {
-                                Text(
-                                    text = "发现新版本 v${info.latestVersion}",
-                                    color = dialogTextColors.titleColor
-                                )
-                            },
-                            text = {
-                                Column(modifier = Modifier.fillMaxWidth()) {
-                                    Text(
-                                        text = "当前版本 v${info.currentVersion}",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = dialogTextColors.currentVersionColor
-                                    )
-                                    preferredAsset?.let { asset ->
-                                        Spacer(modifier = Modifier.height(6.dp))
-                                        Text(
-                                            text = "安装包：${asset.name}",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = dialogTextColors.currentVersionColor
-                                        )
-                                    }
-                                    Spacer(modifier = Modifier.height(6.dp))
-                                    Text(
-                                        text = "Release 锁定：${if (info.releaseIsImmutable) "Immutable" else "可变"}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = dialogTextColors.currentVersionColor
-                                    )
-                                    Text(
-                                        text = "源码提交：$releaseCommit",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = dialogTextColors.currentVersionColor
-                                    )
-                                    Text(
-                                        text = "构建来源：$releaseWorkflowSubtitle",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = dialogTextColors.currentVersionColor
-                                    )
-                                    Text(
-                                        text = "Provenance：$releaseVerificationEvidence",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = dialogTextColors.currentVersionColor
-                                    )
-                                    if (startupUpdateDownloadState.status != AppUpdateDownloadStatus.IDLE) {
-                                        Spacer(modifier = Modifier.height(6.dp))
-                                        Text(
-                                            text = when (startupUpdateDownloadState.status) {
-                                                AppUpdateDownloadStatus.QUEUED -> "等待网络后开始下载"
-                                                AppUpdateDownloadStatus.DOWNLOADING ->
-                                                    "下载中 ${(startupUpdateDownloadState.progress * 100).toInt()}%"
-                                                AppUpdateDownloadStatus.COMPLETED -> "下载完成，正在准备安装"
-                                                AppUpdateDownloadStatus.FAILED ->
-                                                    startupUpdateDownloadState.errorMessage ?: "下载失败"
-                                                AppUpdateDownloadStatus.IDLE -> ""
-                                            },
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = dialogTextColors.currentVersionColor
-                                        )
-                                    }
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Text(
-                                        text = resolvedReleaseNotes,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = dialogTextColors.releaseNotesColor,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .heightIn(max = 280.dp)
-                                            .verticalScroll(releaseNotesScrollState)
-                                    )
-                                }
-                            },
-                            confirmButton = {
-                                AppDialogAction(onClick = {
-                                    val downloadedFile = startupUpdateDownloadState.filePath
-                                        ?.takeIf { startupUpdateDownloadState.status == AppUpdateDownloadStatus.COMPLETED }
-                                        ?.let { path -> File(path) }
-                                        ?.takeIf { it.exists() }
-
-                                    if (downloadedFile != null) {
-                                        installDownloadedAppUpdate(context, downloadedFile)
-                                        return@AppDialogAction
-                                    }
-
-                                    val asset = preferredAsset
-                                    if (asset == null) {
-                                        startupUpdateCheckResult = null
-                                        uriHandler.openUri(info.releaseUrl)
-                                        return@AppDialogAction
-                                    }
-
-                                    if (startupUpdateDownloadState.status == AppUpdateDownloadStatus.DOWNLOADING) {
-                                        return@AppDialogAction
-                                    }
-
-                                    scope.launch {
-                                        downloadAppUpdateApk(
-                                            context = context,
-                                            asset = asset,
-                                            onStateChange = { state -> startupUpdateDownloadState = state }
-                                        ).onSuccess { file ->
-                                            startupUpdateDownloadState = completeAppUpdateDownload(
-                                                current = startupUpdateDownloadState,
-                                                filePath = file.absolutePath
-                                            )
-                                            val installAction = installDownloadedAppUpdate(context, file)
-                                            if (installAction == AppUpdateInstallAction.OPEN_UNKNOWN_SOURCES_SETTINGS) {
-                                                Toast.makeText(context, "请先允许安装未知来源应用", Toast.LENGTH_SHORT).show()
-                                            }
-                                        }.onFailure { error ->
-                                            startupUpdateDownloadState = failAppUpdateDownload(
-                                                current = startupUpdateDownloadState,
-                                                errorMessage = error.message ?: "更新下载失败"
-                                            )
-                                            Toast.makeText(context, error.message ?: "更新下载失败", Toast.LENGTH_SHORT).show()
-                                        }
-                                    }
-                                }) {
-                                    Text(
-                                        when {
-                                            preferredAsset == null -> "前往下载"
-                                            startupUpdateDownloadState.status == AppUpdateDownloadStatus.DOWNLOADING ->
-                                                "下载中 ${(startupUpdateDownloadState.progress * 100).toInt()}%"
-                                            startupUpdateDownloadState.status == AppUpdateDownloadStatus.COMPLETED -> "安装更新"
-                                            else -> "立即更新"
-                                        }
-                                    )
-                                }
-                            },
-                            dismissButton = {
-                                AppDialogAction(onClick = {
-                                    startupUpdateCheckResult = null
-                                    startupUpdateDownloadState = AppUpdateDownloadState()
-                                }) { Text("稍后") }
-                            }
-                        )
-                    }
-                    }
 
                     if (
                         shouldShowPendingCrashLogPrompt(

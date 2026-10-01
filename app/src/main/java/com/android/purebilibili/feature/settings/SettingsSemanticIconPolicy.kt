@@ -37,8 +37,6 @@ internal enum class SettingsIconRole {
     EXPORT_LOGS,
     OPEN_SOURCE_LICENSES,
     OPEN_SOURCE_HOME,
-    CHECK_UPDATE,
-    VIEW_RELEASE_NOTES,
     REPLAY_ONBOARDING,
     TIPS,
     OPEN_LINKS,
@@ -51,10 +49,6 @@ internal enum class SettingsIconRole {
     DYNAMIC_PREVIEW_TEXT,
     DYNAMIC_TAB_VISIBILITY,
     EASTER_EGG,
-    AUTO_CHECK_UPDATE,
-    BUILD_SOURCE,
-    BUILD_FINGERPRINT,
-    BUILD_VERIFICATION,
     ANDROID_LIQUID_GLASS,
     DYNAMIC_COLOR,
     THEME_COLOR_PICKER,
@@ -234,8 +228,6 @@ internal fun resolveSettingsMaterialSymbolResource(role: SettingsIconRole): Int 
     SettingsIconRole.EXPORT_LOGS -> R.drawable.ms_article_24
     SettingsIconRole.OPEN_SOURCE_LICENSES -> R.drawable.ms_gavel_24
     SettingsIconRole.OPEN_SOURCE_HOME -> R.drawable.ms_open_in_new_24
-    SettingsIconRole.CHECK_UPDATE -> R.drawable.ms_system_update_24
-    SettingsIconRole.VIEW_RELEASE_NOTES -> R.drawable.ms_newspaper_24
     SettingsIconRole.REPLAY_ONBOARDING -> R.drawable.ms_replay_24
     SettingsIconRole.TIPS -> R.drawable.ms_lightbulb_24
     SettingsIconRole.OPEN_LINKS -> R.drawable.ms_link_24
@@ -248,10 +240,6 @@ internal fun resolveSettingsMaterialSymbolResource(role: SettingsIconRole): Int 
     SettingsIconRole.DYNAMIC_PREVIEW_TEXT -> R.drawable.ms_text_snippet_24
     SettingsIconRole.DYNAMIC_TAB_VISIBILITY -> R.drawable.ms_visibility_24
     SettingsIconRole.EASTER_EGG -> R.drawable.ms_auto_awesome_24
-    SettingsIconRole.AUTO_CHECK_UPDATE -> R.drawable.ms_update_24
-    SettingsIconRole.BUILD_SOURCE -> R.drawable.ms_tag_24
-    SettingsIconRole.BUILD_FINGERPRINT -> R.drawable.ms_fingerprint_24
-    SettingsIconRole.BUILD_VERIFICATION -> R.drawable.ms_verified_user_24
     SettingsIconRole.ANDROID_LIQUID_GLASS -> R.drawable.ms_water_drop_24
     SettingsIconRole.DYNAMIC_COLOR -> R.drawable.ms_format_color_text_24
     SettingsIconRole.THEME_COLOR_PICKER -> R.drawable.ms_colorize_24
@@ -433,8 +421,6 @@ internal fun resolveSettingsSearchTargetIconRole(
     SettingsSearchTarget.EXPORT_LOGS -> SettingsIconRole.EXPORT_LOGS
     SettingsSearchTarget.OPEN_SOURCE_LICENSES -> SettingsIconRole.OPEN_SOURCE_LICENSES
     SettingsSearchTarget.OPEN_SOURCE_HOME -> SettingsIconRole.OPEN_SOURCE_HOME
-    SettingsSearchTarget.CHECK_UPDATE -> SettingsIconRole.CHECK_UPDATE
-    SettingsSearchTarget.VIEW_RELEASE_NOTES -> SettingsIconRole.VIEW_RELEASE_NOTES
     SettingsSearchTarget.REPLAY_ONBOARDING -> SettingsIconRole.REPLAY_ONBOARDING
     SettingsSearchTarget.TIPS -> SettingsIconRole.TIPS
     SettingsSearchTarget.OPEN_LINKS -> SettingsIconRole.OPEN_LINKS
@@ -461,7 +447,6 @@ internal fun resolveSettingsSemanticIconSizeDp(
 
         SettingsIconRole.PLAYBACK_QUALITY,
         SettingsIconRole.FOLLOW_BUTTON,
-        SettingsIconRole.BUILD_VERIFICATION,
         SettingsIconRole.AUTO_EXIT_FULLSCREEN,
         SettingsIconRole.HEADER_COLLAPSE -> 21
 
@@ -501,8 +486,6 @@ internal fun resolveMiuixSettingsSemanticIcon(role: SettingsIconRole): ImageVect
     SettingsIconRole.EXPORT_LOGS -> MiuixIcons.File
     SettingsIconRole.OPEN_SOURCE_LICENSES -> MiuixIcons.Notes
     SettingsIconRole.OPEN_SOURCE_HOME -> MiuixIcons.Link
-    SettingsIconRole.CHECK_UPDATE -> MiuixIcons.Update
-    SettingsIconRole.VIEW_RELEASE_NOTES -> MiuixIcons.NotesFill
     SettingsIconRole.REPLAY_ONBOARDING -> MiuixIcons.Reset
     SettingsIconRole.TIPS -> MiuixIcons.Help
     SettingsIconRole.OPEN_LINKS -> MiuixIcons.ChevronForward
@@ -515,10 +498,6 @@ internal fun resolveMiuixSettingsSemanticIcon(role: SettingsIconRole): ImageVect
     SettingsIconRole.DYNAMIC_PREVIEW_TEXT -> MiuixIcons.ConvertFile
     SettingsIconRole.DYNAMIC_TAB_VISIBILITY -> MiuixIcons.SelectAll
     SettingsIconRole.EASTER_EGG -> MiuixIcons.Help
-    SettingsIconRole.AUTO_CHECK_UPDATE -> MiuixIcons.Update
-    SettingsIconRole.BUILD_SOURCE -> MiuixIcons.File
-    SettingsIconRole.BUILD_FINGERPRINT -> MiuixIcons.Scan
-    SettingsIconRole.BUILD_VERIFICATION -> MiuixIcons.Ok
     SettingsIconRole.ANDROID_LIQUID_GLASS -> MiuixIcons.Layers
     SettingsIconRole.DYNAMIC_COLOR -> MiuixIcons.Create
     SettingsIconRole.THEME_COLOR_PICKER -> MiuixIcons.Tune

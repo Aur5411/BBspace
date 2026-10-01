@@ -117,12 +117,20 @@ internal fun shouldContinueBackgroundAudioByPolicy(
     stopPlaybackOnExit: Boolean,
     shouldKeepPlaybackForPipTransition: Boolean = false,
     keepForAudioNowPlaying: Boolean = false,
+    /**
+     * 用户刚按了 Home / 最近任务键（onUserLeaveHint 时间窗内）。
+     *
+     * 按 Home 只是把应用退到后台，人还停在播放页上，既不是「返回其他页面」，
+     * 也不是「通过返回键离开播放页」。因此这两条停止条件在 Home 场景下都不适用，
+     * 否则会出现「设置里已开启后台播放，回桌面却仍被暂停」。
+     */
+    leftByHomeKey: Boolean = false,
 ): Boolean {
-    if (stopPlaybackOnExit) return false
+    if (stopPlaybackOnExit && !leftByHomeKey) return false
     if (!isActive) return false
     if (keepForAudioNowPlaying) return true
     if (!backgroundPlaybackEnabled) return false
-    if (isLeavingByNavigation) return false
+    if (isLeavingByNavigation && !leftByHomeKey) return false
     return when (mode) {
         SettingsManager.MiniPlayerMode.OFF -> true
         SettingsManager.MiniPlayerMode.IN_APP_ONLY -> true
@@ -1553,6 +1561,9 @@ class MiniPlayerManager private constructor(private val context: Context) :
         val mode = getCurrentMode()
         val backgroundPlaybackEnabled = SettingsManager.getBackgroundPlaybackEnabledSync(context)
         val stopPlaybackOnExit = SettingsManager.getStopPlaybackOnExitSync(context)
+        // 按 Home 键退出到桌面时 onUserLeaveHint 会先于 onPause 触发，
+        // 这里据此把「按 Home」与「通过返回键离开播放页」区分开。
+        val leftByHomeKey = hasRecentUserLeaveHint()
         return shouldContinueBackgroundAudioByPolicy(
             backgroundPlaybackEnabled = backgroundPlaybackEnabled,
             mode = mode,
@@ -1564,7 +1575,18 @@ class MiniPlayerManager private constructor(private val context: Context) :
                 sessionActive = AudioNowPlayingSession.active.value,
                 barEnabled = SettingsManager.getAudioNowPlayingBarEnabledSync(context),
             ),
-        )
+            leftByHomeKey = leftByHomeKey,
+        ).also { result ->
+            if (!result) {
+                Logger.d(
+                    TAG,
+                    "🔇 shouldContinueBackgroundAudio=false " +
+                        "(bg=$backgroundPlaybackEnabled, mode=$mode, active=$isActive, " +
+                        "leavingByNav=$isLeavingByNavigation, homeKey=$leftByHomeKey, " +
+                        "stopOnExit=$stopPlaybackOnExit)"
+                )
+            }
+        }
     }
 
     fun refreshMediaSessionBinding() {

@@ -5,11 +5,6 @@
         name="logs"
         path="logs/" />
 
-    <!-- 应用内更新 APK 缓存目录 -->
-    <cache-path
-        name="app_update"
-        path="app_update/" />
-
     <!-- 图片预览分享缓存目录 -->
     <cache-path
         name="shared_images"

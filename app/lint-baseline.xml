@@ -3900,17 +3900,6 @@
 
     <issue
         id="ObsoleteSdkInt"
-        message="Unnecessary; `SDK_INT` is always >= 26"
-        errorLine1="    val canRequestPackageInstalls = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {"
-        errorLine2="                                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/android/purebilibili/feature/settings/update/AppUpdateInstaller.kt"
-            line="17"
-            column="41"/>
-    </issue>
-
-    <issue
-        id="ObsoleteSdkInt"
         message="Unnecessary; `SDK_INT` is never &lt; 26"
         errorLine1="    if (activity == null || Build.VERSION.SDK_INT &lt; Build.VERSION_CODES.O) return"
         errorLine2="                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
@@ -5820,17 +5809,6 @@
             file="src/main/java/com/android/purebilibili/navigation/AppNavigation.kt"
             line="1906"
             column="25"/>
-    </issue>
-
-    <issue
-        id="UseKtx"
-        message="Use the KTX extension function `String.toUri` instead?"
-        errorLine1="            Uri.parse(&quot;package:${context.packageName}&quot;)"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/android/purebilibili/feature/settings/update/AppUpdateInstaller.kt"
-            line="30"
-            column="13"/>
     </issue>
 
     <issue

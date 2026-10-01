@@ -29,8 +29,6 @@ enum class SettingsSearchTarget {
     EXPORT_LOGS,
     OPEN_SOURCE_LICENSES,
     OPEN_SOURCE_HOME,
-    CHECK_UPDATE,
-    VIEW_RELEASE_NOTES,
     REPLAY_ONBOARDING,
     TIPS,
     OPEN_LINKS,
@@ -129,9 +127,9 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
     SettingsSearchEntry(
         target = SettingsSearchTarget.ABOUT_SUPPORT,
         title = "关于与支持",
-        subtitle = "版本、更新、开源、发布渠道、小贴士、默认打开链接、社群与捐赠",
+        subtitle = "版本、开源、发布渠道、小贴士、默认打开链接、社群与捐赠",
         section = "设置",
-        aliases = listOf("关于", "支持", "版本", "更新", "开源", "发布渠道", "小贴士", "默认打开链接", "telegram", "twitter", "捐赠", "打赏")
+        aliases = listOf("关于", "支持", "版本", "开源", "发布渠道", "小贴士", "默认打开链接", "telegram", "twitter", "捐赠", "打赏")
     ),
     SettingsSearchEntry(
         target = SettingsSearchTarget.APPEARANCE,
@@ -417,20 +415,6 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
         subtitle = "GitHub",
         section = "关于",
         aliases = listOf("github", "git", "仓库", "源码")
-    ),
-    SettingsSearchEntry(
-        target = SettingsSearchTarget.CHECK_UPDATE,
-        title = "检查更新",
-        subtitle = "立即检查是否有可用的新版本",
-        section = "关于",
-        aliases = listOf("更新", "升级", "新版本", "检查", "自动检查更新", "版本更新", "检测渠道", "测试版", "正式版", "预发布", "beta", "稳定版")
-    ),
-    SettingsSearchEntry(
-        target = SettingsSearchTarget.VIEW_RELEASE_NOTES,
-        title = "查看更新日志",
-        subtitle = "查看当前版本和最近版本的功能变化",
-        section = "关于",
-        aliases = listOf("更新日志", "changelog", "版本说明")
     ),
     SettingsSearchEntry(
         target = SettingsSearchTarget.REPLAY_ONBOARDING,

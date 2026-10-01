@@ -12,8 +12,6 @@ internal enum class SettingsBackTarget {
     IMAGE_SAVE_PATH_DIALOG,
     EASTER_EGG_DIALOG,
     RELEASE_DISCLAIMER_DIALOG,
-    UPDATE_RESULT,
-    CHANGELOG_RESULT,
     BLOCKED_LIST,
 }
 
@@ -87,13 +85,9 @@ internal fun resolveSettingsBackTarget(
     showImageSavePathDialog: Boolean = false,
     showEasterEggDialog: Boolean = false,
     showReleaseDisclaimerDialog: Boolean = false,
-    showUpdateResult: Boolean = false,
-    showChangelogResult: Boolean = false,
     showBlockedList: Boolean = false,
 ): SettingsBackTarget = when {
     showBlockedList -> SettingsBackTarget.BLOCKED_LIST
-    showChangelogResult -> SettingsBackTarget.CHANGELOG_RESULT
-    showUpdateResult -> SettingsBackTarget.UPDATE_RESULT
     showReleaseDisclaimerDialog -> SettingsBackTarget.RELEASE_DISCLAIMER_DIALOG
     showEasterEggDialog -> SettingsBackTarget.EASTER_EGG_DIALOG
     showImageSavePathDialog -> SettingsBackTarget.IMAGE_SAVE_PATH_DIALOG

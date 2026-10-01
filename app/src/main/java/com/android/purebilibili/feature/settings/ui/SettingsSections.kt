@@ -210,11 +210,6 @@ internal data class SettingsRootCategoryActions(
     val onTwitterClick: () -> Unit,
     val onDisclaimerClick: () -> Unit,
     val onLicenseClick: () -> Unit,
-    val onVerificationClick: () -> Unit,
-    val onBuildSourceClick: () -> Unit,
-    val onBuildFingerprintClick: () -> Unit,
-    val onCheckUpdateClick: () -> Unit,
-    val onViewReleaseNotesClick: () -> Unit,
     val onVersionClick: () -> Unit,
     val onReplayOnboardingClick: () -> Unit,
     val onTipsClick: () -> Unit,
@@ -228,8 +223,6 @@ internal data class SettingsRootCategoryActions(
     val onAnalyticsChange: (Boolean) -> Unit,
     val onEnhancedDiagnosticLoggingChange: (Boolean) -> Unit,
     val onEasterEggChange: (Boolean) -> Unit,
-    val onAutoCheckUpdateChange: (Boolean) -> Unit,
-    val onAppUpdateChannelChange: (com.android.purebilibili.core.store.SettingsManager.AppUpdateChannel) -> Unit,
     val onFeedApiTypeChange: (com.android.purebilibili.core.store.SettingsManager.FeedApiType) -> Unit,
     val onIncrementalTimelineRefreshChange: (Boolean) -> Unit,
     val onDynamicImagePreviewTextVisibleChange: (Boolean) -> Unit,
@@ -256,17 +249,6 @@ internal data class SettingsRootCategoryState(
     val versionName: String,
     val appIcon: String,
     val easterEggEnabled: Boolean,
-    val updateStatusText: String,
-    val isCheckingUpdate: Boolean,
-    val autoCheckUpdateEnabled: Boolean,
-    val appUpdateChannel: com.android.purebilibili.core.store.SettingsManager.AppUpdateChannel,
-    val verificationLabel: String,
-    val verificationSubtitle: String,
-    val buildSourceValue: String,
-    val buildSourceSubtitle: String,
-    val buildFingerprintValue: String,
-    val buildFingerprintCopyValue: String,
-    val buildFingerprintSubtitle: String,
     val versionClickCount: Int,
     val versionClickThreshold: Int,
     val feedApiType: com.android.purebilibili.core.store.SettingsManager.FeedApiType,
@@ -1898,27 +1880,9 @@ fun AboutSection(
     easterEggEnabled: Boolean,
     onLicenseClick: () -> Unit,
     onGithubClick: () -> Unit,
-    onVerificationClick: () -> Unit,
-    onBuildSourceClick: () -> Unit,
-    onBuildFingerprintClick: () -> Unit,
-    onCheckUpdateClick: () -> Unit,
-    onViewReleaseNotesClick: () -> Unit,
-    autoCheckUpdateEnabled: Boolean,
-    onAutoCheckUpdateChange: (Boolean) -> Unit,
-    appUpdateChannel: SettingsManager.AppUpdateChannel,
-    onAppUpdateChannelChange: (SettingsManager.AppUpdateChannel) -> Unit,
     onVersionClick: () -> Unit,
     onReplayOnboardingClick: () -> Unit,
     onEasterEggChange: (Boolean) -> Unit,
-    updateStatusText: String = "点击检查",
-    isCheckingUpdate: Boolean = false,
-    verificationLabel: String = "未验证",
-    verificationSubtitle: String = "暂未获取到可核对的 release 证据",
-    buildSourceValue: String = "本地构建",
-    buildSourceSubtitle: String = "未绑定 GitHub Release",
-    buildFingerprintValue: String = "未读取",
-    buildFingerprintCopyValue: String = "未读取",
-    buildFingerprintSubtitle: String = "暂未读取到当前安装包 SHA-256",
     versionClickCount: Int = 0,
     versionClickThreshold: Int = EasterEggs.VERSION_EASTER_EGG_THRESHOLD
 ) {
@@ -1930,20 +1894,12 @@ fun AboutSection(
     val appIconRes = remember(appIconKey, appIconAppearance) {
         resolveIconOptionPreviewRes(appIconKey, appIconAppearance)
     }
-    var detailDialogContent by remember { mutableStateOf<AppBuildInfoDialogContent?>(null) }
     val easterEggTint = rememberSettingsEntryTint(AppSemanticAccentRole.TERTIARY, iOSYellow)
-    val updateSiblingTints = remember { resolveSettingsSiblingIconTints(5, paletteOffset = 3) }
     val licensesVisual = rememberSettingsEntryVisual(SettingsSearchTarget.OPEN_SOURCE_LICENSES)
     val openSourceHomeVisual = rememberSettingsEntryVisual(SettingsSearchTarget.OPEN_SOURCE_HOME)
-    val checkUpdateVisual = rememberSettingsEntryVisual(SettingsSearchTarget.CHECK_UPDATE)
-    val releaseNotesVisual = rememberSettingsEntryVisual(SettingsSearchTarget.VIEW_RELEASE_NOTES)
     val replayOnboardingVisual = rememberSettingsEntryVisual(SettingsSearchTarget.REPLAY_ONBOARDING)
-    val notificationIcon = rememberSettingsSemanticIcon(SettingsIconRole.AUTO_CHECK_UPDATE)
     val infoIcon = rememberSettingsSemanticIcon(SettingsIconRole.APP_VERSION)
     val sparklesIcon = rememberSettingsSemanticIcon(SettingsIconRole.EASTER_EGG)
-    val verificationIcon = rememberSettingsSemanticIcon(SettingsIconRole.BUILD_VERIFICATION)
-    val buildSourceIcon = rememberSettingsSemanticIcon(SettingsIconRole.BUILD_SOURCE)
-    val buildFingerprintIcon = rememberSettingsSemanticIcon(SettingsIconRole.BUILD_FINGERPRINT)
 
     val safeThreshold = versionClickThreshold.coerceAtLeast(1)
     val normalizedClickCount = versionClickCount.coerceAtLeast(0)
@@ -1971,60 +1927,13 @@ fun AboutSection(
         }
     }
 
-    detailDialogContent?.let { dialogContent ->
-        val dialogScrollState = rememberScrollState()
-        AppAlertDialog(
-            onDismissRequest = { detailDialogContent = null },
-            title = { AppText(dialogContent.title) },
-            text = {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 320.dp)
-                        .verticalScroll(dialogScrollState)
-                ) {
-                    AppText(
-                        text = dialogContent.value,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    AppText(
-                        text = dialogContent.body,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            },
-            confirmButton = {
-                AppDialogAction(
-                    onClick = {
-                        when (dialogContent.action) {
-                            AppBuildInfoDialogAction.VIEW_VERIFICATION -> onVerificationClick()
-                            AppBuildInfoDialogAction.VIEW_BUILD_SOURCE -> onBuildSourceClick()
-                            AppBuildInfoDialogAction.VIEW_BUILD_FINGERPRINT -> onBuildFingerprintClick()
-                        }
-                        detailDialogContent = null
-                    }
-                ) {
-                    AppText(dialogContent.actionLabel)
-                }
-            },
-            dismissButton = {
-                AppDialogAction(onClick = { detailDialogContent = null }) {
-                    AppText("关闭")
-                }
-            }
-        )
-    }
-
     AboutProjectOverviewCard(
         versionName = versionName,
         appIconRes = appIconRes,
     )
     Spacer(modifier = Modifier.height(12.dp))
 
-    SettingsSectionTitle(title = "源码与验证")
+    SettingsSectionTitle(title = "开源")
     SettingsCardGroup {
         SettingClickableItem(
             icon = openSourceHomeVisual.icon,
@@ -2044,104 +1953,6 @@ fun AboutSection(
             value = "License",
             onClick = onLicenseClick,
             iconTint = licensesVisual.iconTint
-        )
-        SettingsAdaptiveDivider()
-        SettingClickableItem(
-            icon = verificationIcon,
-            title = "源码一致性",
-            subtitle = verificationSubtitle,
-            value = verificationLabel,
-            onClick = {
-                detailDialogContent = resolveVerificationDialogContent(
-                    label = verificationLabel,
-                    summary = verificationSubtitle
-                )
-            },
-            iconTint = when (verificationLabel) {
-                "已验证" -> iOSGreen
-                "基本可验证" -> iOSBlue
-                else -> iOSOrange
-            }
-        )
-        SettingsAdaptiveDivider()
-        SettingClickableItem(
-            icon = buildSourceIcon,
-            title = "构建来源",
-            subtitle = buildSourceSubtitle,
-            value = buildSourceValue,
-            onClick = {
-                detailDialogContent = resolveBuildSourceDialogContent(
-                    value = buildSourceValue,
-                    subtitle = buildSourceSubtitle
-                )
-            },
-            iconTint = iOSOrange,
-            enableCopy = true,
-            onCopyRequest = rememberClipboardCopyHandler(),
-        )
-        SettingsAdaptiveDivider()
-        SettingClickableItem(
-            icon = buildFingerprintIcon,
-            title = "SHA-256",
-            subtitle = buildFingerprintSubtitle,
-            value = buildFingerprintValue,
-            copyValue = buildFingerprintCopyValue,
-            onClick = {
-                detailDialogContent = resolveBuildFingerprintDialogContent(
-                    value = buildFingerprintValue,
-                    fullValue = buildFingerprintCopyValue,
-                    subtitle = buildFingerprintSubtitle
-                )
-            },
-            iconTint = iOSPurple,
-            enableCopy = true,
-            onCopyRequest = rememberClipboardCopyHandler(),
-        )
-    }
-    Spacer(modifier = Modifier.height(12.dp))
-
-    SettingsSectionTitle(title = "更新")
-    SettingsCardGroup {
-        SettingClickableItem(
-            icon = checkUpdateVisual.icon,
-            iconPainter = checkUpdateVisual.iconResId?.let { painterResource(id = it) },
-            title = "检查更新",
-            value = if (isCheckingUpdate) "检查中..." else updateStatusText,
-            onClick = onCheckUpdateClick,
-            iconTint = updateSiblingTints[1]
-        )
-        SettingsAdaptiveDivider()
-        SettingClickableItem(
-            icon = releaseNotesVisual.icon,
-            iconPainter = releaseNotesVisual.iconResId?.let { painterResource(id = it) },
-            title = "查看更新日志",
-            value = "最新版本说明",
-            onClick = onViewReleaseNotesClick,
-            iconTint = updateSiblingTints[2]
-        )
-        SettingsAdaptiveDivider()
-        SettingSwitchItem(
-            icon = notificationIcon,
-            title = "自动检查更新",
-            subtitle = resolveAutoCheckUpdateSubtitle(autoCheckEnabled = autoCheckUpdateEnabled),
-            checked = autoCheckUpdateEnabled,
-            onCheckedChange = onAutoCheckUpdateChange,
-            iconTint = updateSiblingTints[3]
-        )
-        SettingsAdaptiveDivider()
-        SettingsSingleChoicePreference(
-            title = "检测渠道",
-            subtitle = appUpdateChannel.description,
-            options = SettingsManager.AppUpdateChannel.entries.map { channel ->
-                com.android.purebilibili.core.ui.components.AppSegmentOption(
-                    value = channel,
-                    label = channel.label
-                )
-            },
-            selectedValue = appUpdateChannel,
-            icon = checkUpdateVisual.icon,
-            iconTint = updateSiblingTints[4],
-            onSelectionChange = onAppUpdateChannelChange
         )
     }
     Spacer(modifier = Modifier.height(12.dp))

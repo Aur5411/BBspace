@@ -569,13 +569,16 @@ fun PlaybackSettingsContent(
                         AppPreferenceDivider()
 	                        AppSwitchPreference(
 	                            icon = rememberSettingsSemanticIcon(SettingsIconRole.BACKGROUND_PLAYBACK),
-                            title = "后台播放",
-                            subtitle = if (backgroundPlaybackEnabled) {
-                                "已开启：离开应用或锁屏时仍可继续播放"
-                            } else {
-                                "关闭后离开应用或锁屏时停止播放"
-                            },
-                            checked = backgroundPlaybackEnabled,
+	                            title = "后台播放",
+	                            subtitle = when {
+	                                stopPlaybackOnExit ->
+	                                    "已开启，但「离开播放页后停止」优先级更高，需先关闭它才会生效"
+	                                backgroundPlaybackEnabled ->
+	                                    "已开启：按 Home 回桌面或锁屏时继续播放"
+	                                else ->
+	                                    "关闭后离开应用或锁屏时停止播放"
+	                            },
+	                            checked = backgroundPlaybackEnabled,
                             onCheckedChange = {
                                 scope.launch {
                                     com.android.purebilibili.core.store.SettingsManager

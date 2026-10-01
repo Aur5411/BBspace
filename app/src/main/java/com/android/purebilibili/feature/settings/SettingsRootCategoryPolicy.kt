@@ -45,7 +45,7 @@ enum class SettingsRootCategory(
     ),
     SYSTEM_ABOUT(
         title = "系统与关于",
-        subtitle = "排查问题、检查更新并查看应用信息",
+        subtitle = "排查问题并查看应用信息",
         searchTarget = SettingsSearchTarget.DIAGNOSTICS,
     ),
 
@@ -129,8 +129,6 @@ internal fun resolveSettingsRootCategoryForSearchTarget(
     SettingsSearchTarget.ABOUT_SUPPORT,
     SettingsSearchTarget.OPEN_SOURCE_LICENSES,
     SettingsSearchTarget.OPEN_SOURCE_HOME,
-    SettingsSearchTarget.CHECK_UPDATE,
-    SettingsSearchTarget.VIEW_RELEASE_NOTES,
     SettingsSearchTarget.REPLAY_ONBOARDING,
     SettingsSearchTarget.DISCLAIMER,
     SettingsSearchTarget.TELEGRAM,

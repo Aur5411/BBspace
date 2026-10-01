@@ -57,7 +57,6 @@ class SettingsInformationArchitecturePolicyTest {
     fun systemActionSearchResultsNavigateToTheirOwningCategory() {
         listOf(
             SettingsSearchTarget.OPEN_SOURCE_HOME,
-            SettingsSearchTarget.CHECK_UPDATE,
             SettingsSearchTarget.TELEGRAM,
         ).forEach { target ->
             val result = SettingsSearchResult(

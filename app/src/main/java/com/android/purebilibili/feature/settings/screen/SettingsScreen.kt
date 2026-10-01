@@ -149,10 +149,6 @@ fun SettingsScreen(
         )
     val feedApiType by SettingsManager.getFeedApiType(context).collectAsStateWithLifecycle(initialValue = SettingsManager.FeedApiType.WEB
     )
-    val autoCheckUpdateEnabled by SettingsManager.getAutoCheckAppUpdate(context)
-        .collectAsStateWithLifecycle(initialValue = true)
-    val appUpdateChannel by SettingsManager.getAppUpdateChannel(context)
-        .collectAsStateWithLifecycle(initialValue = SettingsManager.AppUpdateChannel.STABLE)
     val incrementalTimelineRefreshEnabled by SettingsManager.getIncrementalTimelineRefresh(context)
         .collectAsStateWithLifecycle(initialValue = false)
     val homeRefreshCount by SettingsManager.getHomeRefreshCount(context)
@@ -194,80 +190,11 @@ fun SettingsScreen(
     var showImageSavePathDialog by remember { mutableStateOf(false) }
     // [新增] 打赏对话框
     var showReleaseDisclaimerDialog by remember { mutableStateOf(false) }
-    var isCheckingUpdate by remember { mutableStateOf(false) }
-    var updateStatusText by remember { mutableStateOf("点击检查") }
-    var updateCheckResult by remember { mutableStateOf<AppUpdateCheckResult?>(null) }
-    var changelogCheckResult by remember { mutableStateOf<AppUpdateCheckResult?>(null) }
-    var updateDownloadState by remember { mutableStateOf(AppUpdateDownloadState()) }
-    val currentReleaseEvidence = state.currentReleaseEvidence
-    val installedApkSha256 = state.installedApkSha256
     
     // [新增] 黑名单页面状态
     var showBlockedList by remember { mutableStateOf(false) }
     // [新增] 发评反诈页面状态
     var showCommentFraudHistory by remember { mutableStateOf(false) }
-    val installedBuildProvenance = remember { readInstalledAppBuildProvenance() }
-
-    // Effects
-    val buildVerificationState = remember(currentReleaseEvidence, installedApkSha256) {
-        resolveAppBuildVerificationState(
-            currentVersion = com.android.purebilibili.BuildConfig.VERSION_NAME,
-            localBuildCommitSha = installedBuildProvenance.commitSha,
-            localWorkflowRunId = installedBuildProvenance.workflowRunId,
-            localWorkflowRunUrl = installedBuildProvenance.workflowRunUrl,
-            localReleaseTag = installedBuildProvenance.releaseTag,
-            localApkSha256 = installedApkSha256,
-            remoteRelease = currentReleaseEvidence
-        )
-    }
-    val buildVerificationLabel = remember(buildVerificationState.status) {
-        resolveAppBuildVerificationLabel(buildVerificationState.status)
-    }
-    val buildSourceFallback = remember(buildVerificationState.releaseTag, buildVerificationState.workflowRunId) {
-        if (
-            !buildVerificationState.releaseTag.isNullOrBlank() ||
-            !buildVerificationState.workflowRunId.isNullOrBlank()
-        ) {
-            "GitHub Release"
-        } else {
-            "本地构建"
-        }
-    }
-    val buildSourceValue = remember(
-        buildVerificationState.sourceCommitSha,
-        installedBuildProvenance.commitSha,
-        buildSourceFallback
-    ) {
-        resolveBuildSourceValue(
-            buildVerificationState.sourceCommitSha ?: installedBuildProvenance.commitSha,
-            fallback = buildSourceFallback
-        )
-    }
-    val buildSourceSubtitle = remember(buildVerificationState.workflowRunId, buildVerificationState.releaseTag) {
-        resolveBuildSourceSubtitle(
-            workflowRunId = buildVerificationState.workflowRunId ?: installedBuildProvenance.workflowRunId,
-            releaseTag = buildVerificationState.releaseTag ?: installedBuildProvenance.releaseTag
-        )
-    }
-    val buildFingerprintValue = remember(installedApkSha256) {
-        resolveBuildFingerprintValue(installedApkSha256)
-    }
-    val buildFingerprintCopyValue = remember(installedApkSha256) {
-        installedApkSha256 ?: "未读取"
-    }
-    val buildFingerprintSubtitle = remember(
-        buildVerificationState.localApkSha256,
-        buildVerificationState.remoteApkSha256,
-        buildVerificationState.releaseIsImmutable,
-        buildVerificationState.hasAttestation
-    ) {
-        resolveBuildFingerprintSubtitle(
-            localApkSha256 = buildVerificationState.localApkSha256,
-            remoteApkSha256 = buildVerificationState.remoteApkSha256,
-            releaseIsImmutable = buildVerificationState.releaseIsImmutable,
-            hasAttestation = buildVerificationState.hasAttestation
-        )
-    }
 
     // Haze State for this screen
     val activeHazeState = mainHazeState ?: rememberRecoverableHazeState()
@@ -346,13 +273,6 @@ fun SettingsScreen(
     val onEasterEggChange: (Boolean) -> Unit = { enabled ->
         scope.launch { SettingsManager.setEasterEggEnabled(context, enabled) }
     }
-    val onAutoCheckUpdateChange: (Boolean) -> Unit = { enabled ->
-        scope.launch { SettingsManager.setAutoCheckAppUpdate(context, enabled) }
-    }
-    val onAppUpdateChannelChange: (SettingsManager.AppUpdateChannel) -> Unit = { channel ->
-        scope.launch { SettingsManager.setAppUpdateChannel(context, channel) }
-    }
-    
     val onVersionClickAction: () -> Unit = {
         versionClickCount++
         val message = EasterEggs.getVersionClickMessage(
@@ -380,93 +300,9 @@ fun SettingsScreen(
     val onTelegramGroupClick: () -> Unit = { uriHandler.openUri(OFFICIAL_TELEGRAM_GROUP_URL) }
     val onTwitterClick: () -> Unit = { uriHandler.openUri("https://x.com/YangY_0x00") }
     val onGithubClick: () -> Unit = { uriHandler.openUri(OFFICIAL_GITHUB_URL) }
-    val onVerificationClick: () -> Unit = {
-        uriHandler.openUri(
-            currentReleaseEvidence?.verificationMetadata?.attestationUrl
-                ?: currentReleaseEvidence?.releaseUrl
-                ?: OFFICIAL_GITHUB_URL
-        )
-    }
-    val onBuildSourceClick: () -> Unit = {
-        uriHandler.openUri(
-            buildVerificationState.workflowRunUrl
-                ?: installedBuildProvenance.workflowRunUrl
-                    .takeIf { it.isNotBlank() }
-                ?: OFFICIAL_GITHUB_URL
-        )
-    }
-    val onBuildFingerprintClick: () -> Unit = {
-        uriHandler.openUri(
-            currentReleaseEvidence?.verificationMetadata?.attestationUrl
-                ?: currentReleaseEvidence?.releaseUrl
-                ?: OFFICIAL_GITHUB_URL
-        )
-    }
     val onDisclaimerClick: () -> Unit = { showReleaseDisclaimerDialog = true }
     val onBlockedListClickAction: () -> Unit = { showBlockedList = true }
     val onCommentFraudHistoryClickAction: () -> Unit = { showCommentFraudHistory = true }
-    suspend fun runUpdateCheck(
-        silent: Boolean,
-        shouldOpenReleaseNotes: Boolean = false
-    ) {
-        isCheckingUpdate = true
-        if (!silent) {
-            updateStatusText = "检查中..."
-        }
-        val result = AppUpdateChecker.check(
-            currentVersion = com.android.purebilibili.BuildConfig.VERSION_NAME,
-            currentVersionCode = com.android.purebilibili.BuildConfig.VERSION_CODE,
-            includePrerelease = appUpdateChannel == SettingsManager.AppUpdateChannel.BETA
-        )
-        result.onSuccess { info ->
-            viewModel.recordReleaseEvidence(info)
-            updateStatusText = info.message
-            when (resolveAppUpdateDialogMode(info.isUpdateAvailable, shouldOpenReleaseNotes)) {
-                AppUpdateDialogMode.UPDATE_AVAILABLE -> {
-                    updateCheckResult = info
-                }
-                AppUpdateDialogMode.CHANGELOG -> {
-                    changelogCheckResult = info
-                }
-                AppUpdateDialogMode.NONE -> {
-                    if (!silent) {
-                        Toast.makeText(context, info.message, Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }
-        }.onFailure { error ->
-            if (!silent || shouldOpenReleaseNotes) {
-                updateStatusText = "检查失败"
-                Toast.makeText(context, error.message ?: "更新检查失败，请稍后重试", Toast.LENGTH_SHORT).show()
-            }
-        }
-        isCheckingUpdate = false
-    }
-    val onCheckUpdateAction: () -> Unit = {
-        if (isCheckingUpdate) {
-            Toast.makeText(context, "正在检查更新，请稍候", Toast.LENGTH_SHORT).show()
-        } else {
-            scope.launch {
-                runUpdateCheck(
-                    silent = false,
-                    shouldOpenReleaseNotes = false
-                )
-            }
-        }
-    }
-    val onViewReleaseNotesAction: () -> Unit = {
-        if (isCheckingUpdate) {
-            Toast.makeText(context, "正在检查更新，请稍候", Toast.LENGTH_SHORT).show()
-        } else {
-            scope.launch {
-                runUpdateCheck(
-                    silent = true,
-                    shouldOpenReleaseNotes = true
-                )
-            }
-        }
-    }
-
     // Effects
     LaunchedEffect(showCacheAnimation) {
         if (showCacheAnimation) {
@@ -500,9 +336,6 @@ fun SettingsScreen(
         }
     }
 
-    LaunchedEffect(viewModel) {
-        viewModel.ensureDiagnosticsLoaded()
-    }
     LaunchedEffect(Unit) {
         AnalyticsHelper.logScreenView("SettingsScreen")
     }
@@ -643,282 +476,6 @@ fun SettingsScreen(
         )
     }
 
-    updateCheckResult?.let { info ->
-        AppUpdateDialogHost(
-            update = info,
-            onDismissRequest = { updateCheckResult = null },
-        )
-    }
-
-    if (false) {
-    updateCheckResult?.let { info ->
-        val resolvedReleaseNotes = remember(info.releaseNotes) {
-            resolveUpdateReleaseNotesText(info.releaseNotes)
-        }
-        val preferredAsset = remember(info.assets) {
-            selectPreferredAppUpdateAsset(info.assets)
-        }
-        val releaseCommit = remember(info.buildMetadata?.gitCommitSha) {
-            resolveBuildSourceValue(info.buildMetadata?.gitCommitSha, fallback = "未知")
-        }
-        val releaseWorkflowSubtitle = remember(info.buildMetadata?.workflowRunId, info.buildMetadata?.releaseTag) {
-            resolveBuildSourceSubtitle(
-                workflowRunId = info.buildMetadata?.workflowRunId,
-                releaseTag = info.buildMetadata?.releaseTag
-            )
-        }
-        val releaseVerificationEvidence = remember(info.verificationMetadata?.attestationUrl) {
-            if (info.verificationMetadata?.attestationUrl?.isNotBlank() == true) {
-                "GitHub Attestation"
-            } else {
-                "未提供"
-            }
-        }
-        val isDialogDarkTheme = AppSurfaceTokens.cardContainer().luminance() < 0.5f
-        val dialogTextColors = remember(isDialogDarkTheme) {
-            resolveAppUpdateDialogTextColors(
-                isDarkTheme = isDialogDarkTheme
-            )
-        }
-        val releaseNotesScrollState = rememberScrollState()
-        com.android.purebilibili.core.ui.AppAlertDialog(
-            onDismissRequest = { updateCheckResult = null },
-            title = {
-                AppText(
-                    text = "发现新版本 v${info.latestVersion}",
-                    color = dialogTextColors.titleColor
-                )
-            },
-            text = {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    AppText(
-                        text = "当前版本 v${info.currentVersion}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = dialogTextColors.currentVersionColor
-                    )
-                    preferredAsset?.let { asset ->
-                        Spacer(modifier = Modifier.height(6.dp))
-                        AppText(
-                            text = "安装包：${asset.name}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = dialogTextColors.currentVersionColor
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(6.dp))
-                    AppText(
-                        text = "Release 锁定：${if (info.releaseIsImmutable) "Immutable" else "可变"}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = dialogTextColors.currentVersionColor
-                    )
-                    AppText(
-                        text = "源码提交：$releaseCommit",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = dialogTextColors.currentVersionColor
-                    )
-                    AppText(
-                        text = "构建来源：$releaseWorkflowSubtitle",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = dialogTextColors.currentVersionColor
-                    )
-                    AppText(
-                        text = "Provenance：$releaseVerificationEvidence",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = dialogTextColors.currentVersionColor
-                    )
-                    if (updateDownloadState.status != AppUpdateDownloadStatus.IDLE) {
-                        Spacer(modifier = Modifier.height(6.dp))
-                        AppText(
-                            text = when (updateDownloadState.status) {
-                                AppUpdateDownloadStatus.QUEUED -> "等待网络后开始下载"
-                                AppUpdateDownloadStatus.DOWNLOADING -> "下载中 ${(updateDownloadState.progress * 100).toInt()}%"
-                                AppUpdateDownloadStatus.COMPLETED -> "下载完成，正在准备安装"
-                                AppUpdateDownloadStatus.FAILED -> updateDownloadState.errorMessage ?: "下载失败"
-                                AppUpdateDownloadStatus.IDLE -> ""
-                            },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = dialogTextColors.currentVersionColor
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    AppText(
-                        text = resolvedReleaseNotes,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = dialogTextColors.releaseNotesColor,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 280.dp)
-                            .verticalScroll(releaseNotesScrollState)
-                    )
-                }
-            },
-            confirmButton = {
-                com.android.purebilibili.core.ui.AppDialogAction(onClick = {
-                    val downloadedFile = updateDownloadState.filePath
-                        ?.takeIf { updateDownloadState.status == AppUpdateDownloadStatus.COMPLETED }
-                        ?.let { path -> java.io.File(path) }
-                        ?.takeIf { it.exists() }
-
-                    if (downloadedFile != null) {
-                        installDownloadedAppUpdate(context, downloadedFile)
-                        return@AppDialogAction
-                    }
-
-                    val asset = preferredAsset
-                    if (asset == null) {
-                        updateCheckResult = null
-                        uriHandler.openUri(info.releaseUrl)
-                        return@AppDialogAction
-                    }
-
-                    if (updateDownloadState.status == AppUpdateDownloadStatus.DOWNLOADING) {
-                        return@AppDialogAction
-                    }
-
-                    scope.launch {
-                        downloadAppUpdateApk(
-                            context = context,
-                            asset = asset,
-                            onStateChange = { state -> updateDownloadState = state }
-                        ).onSuccess { file ->
-                            updateDownloadState = completeAppUpdateDownload(
-                                current = updateDownloadState,
-                                filePath = file.absolutePath
-                            )
-                            val installAction = installDownloadedAppUpdate(context, file)
-                            if (installAction == AppUpdateInstallAction.OPEN_UNKNOWN_SOURCES_SETTINGS) {
-                                Toast.makeText(context, "请先允许安装未知来源应用", Toast.LENGTH_SHORT).show()
-                            }
-                        }.onFailure { error ->
-                            updateDownloadState = failAppUpdateDownload(
-                                current = updateDownloadState,
-                                errorMessage = error.message ?: "更新下载失败"
-                            )
-                            Toast.makeText(context, error.message ?: "更新下载失败", Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                }) {
-                    AppText(
-                        when {
-                            preferredAsset == null -> "前往下载"
-                            updateDownloadState.status == AppUpdateDownloadStatus.DOWNLOADING ->
-                                "下载中 ${(updateDownloadState.progress * 100).toInt()}%"
-                            updateDownloadState.status == AppUpdateDownloadStatus.COMPLETED -> "安装更新"
-                            else -> "立即更新"
-                        }
-                    )
-                }
-            },
-            dismissButton = {
-                com.android.purebilibili.core.ui.AppDialogAction(onClick = {
-                    updateCheckResult = null
-                    updateDownloadState = AppUpdateDownloadState()
-                }) { AppText("稍后") }
-            }
-        )
-    }
-
-    }
-
-    changelogCheckResult?.let { info ->
-        AppUpdateDialogHost(
-            update = info,
-            showReleaseNotesOnly = true,
-            onDismissRequest = { changelogCheckResult = null },
-        )
-    }
-
-    if (false) {
-    changelogCheckResult?.let { info ->
-        val resolvedReleaseNotes = remember(info.releaseNotes) {
-            resolveUpdateReleaseNotesText(info.releaseNotes)
-        }
-        val releaseCommit = remember(info.buildMetadata?.gitCommitSha) {
-            resolveBuildSourceValue(info.buildMetadata?.gitCommitSha, fallback = "未知")
-        }
-        val releaseWorkflowSubtitle = remember(info.buildMetadata?.workflowRunId, info.buildMetadata?.releaseTag) {
-            resolveBuildSourceSubtitle(
-                workflowRunId = info.buildMetadata?.workflowRunId,
-                releaseTag = info.buildMetadata?.releaseTag
-            )
-        }
-        val releaseVerificationEvidence = remember(info.verificationMetadata?.attestationUrl) {
-            if (info.verificationMetadata?.attestationUrl?.isNotBlank() == true) {
-                "GitHub Attestation"
-            } else {
-                "未提供"
-            }
-        }
-        val isDialogDarkTheme = AppSurfaceTokens.cardContainer().luminance() < 0.5f
-        val dialogTextColors = remember(isDialogDarkTheme) {
-            resolveAppUpdateDialogTextColors(
-                isDarkTheme = isDialogDarkTheme
-            )
-        }
-        val releaseNotesScrollState = rememberScrollState()
-        com.android.purebilibili.core.ui.AppAlertDialog(
-            onDismissRequest = { changelogCheckResult = null },
-            title = {
-                AppText(
-                    text = "更新日志 v${info.latestVersion}",
-                    color = dialogTextColors.titleColor
-                )
-            },
-            text = {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    AppText(
-                        text = "当前版本 v${info.currentVersion}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = dialogTextColors.currentVersionColor
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    AppText(
-                        text = "Release 锁定：${if (info.releaseIsImmutable) "Immutable" else "可变"}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = dialogTextColors.currentVersionColor
-                    )
-                    AppText(
-                        text = "源码提交：$releaseCommit",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = dialogTextColors.currentVersionColor
-                    )
-                    AppText(
-                        text = "构建来源：$releaseWorkflowSubtitle",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = dialogTextColors.currentVersionColor
-                    )
-                    AppText(
-                        text = "Provenance：$releaseVerificationEvidence",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = dialogTextColors.currentVersionColor
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    AppText(
-                        text = resolvedReleaseNotes,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = dialogTextColors.releaseNotesColor,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 280.dp)
-                            .verticalScroll(releaseNotesScrollState)
-                    )
-                }
-            },
-            confirmButton = {
-                com.android.purebilibili.core.ui.AppDialogAction(onClick = {
-                    changelogCheckResult = null
-                    uriHandler.openUri(info.releaseUrl)
-                }) { AppText("查看发布页") }
-            },
-            dismissButton = {
-                com.android.purebilibili.core.ui.AppDialogAction(onClick = {
-                    changelogCheckResult = null
-                }) { AppText("关闭") }
-            }
-        )
-    }
-
-    }
-
     val onOpenLinksAction: () -> Unit = {
         try {
             val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -942,8 +499,6 @@ fun SettingsScreen(
         showImageSavePathDialog = showImageSavePathDialog,
         showEasterEggDialog = showEasterEggDialog,
         showReleaseDisclaimerDialog = showReleaseDisclaimerDialog,
-        showUpdateResult = updateCheckResult != null,
-        showChangelogResult = changelogCheckResult != null,
         showBlockedList = showBlockedList,
     )
     SettingsLocalBackHandler(enabled = settingsBackTarget != SettingsBackTarget.NONE) {
@@ -961,8 +516,6 @@ fun SettingsScreen(
                 versionClickCount = 0
             }
             SettingsBackTarget.RELEASE_DISCLAIMER_DIALOG -> showReleaseDisclaimerDialog = false
-            SettingsBackTarget.UPDATE_RESULT -> updateCheckResult = null
-            SettingsBackTarget.CHANGELOG_RESULT -> changelogCheckResult = null
             SettingsBackTarget.BLOCKED_LIST -> showBlockedList = false
         }
     }
@@ -1006,11 +559,6 @@ fun SettingsScreen(
                     onLicenseClick = onOpenSourceLicensesClick,
                     onDisclaimerClick = onDisclaimerClick,
                     onGithubClick = onGithubClick,
-                    onVerificationClick = onVerificationClick,
-                    onBuildSourceClick = onBuildSourceClick,
-                    onBuildFingerprintClick = onBuildFingerprintClick,
-                    onCheckUpdateClick = onCheckUpdateAction,
-                    onViewReleaseNotesClick = onViewReleaseNotesAction,
                     onVersionClick = onVersionClickAction,
                     onReplayOnboardingClick = onReplayOnboardingClick,
                     onTelegramClick = onTelegramClick,
@@ -1040,8 +588,6 @@ fun SettingsScreen(
                     onAnalyticsChange = onAnalyticsChange,
                     onEnhancedDiagnosticLoggingChange = onEnhancedDiagnosticLoggingChange,
                     onEasterEggChange = onEasterEggChange,
-                    onAutoCheckUpdateChange = onAutoCheckUpdateChange,
-                    onAppUpdateChannelChange = onAppUpdateChannelChange,
                     privacyModeEnabled = privacyModeEnabled,
                     searchSuggestionsEnabled = searchSuggestionsEnabled,
                     customDownloadPath = downloadExportTreeUri ?: customDownloadPath,
@@ -1058,18 +604,7 @@ fun SettingsScreen(
                     versionClickCount = versionClickCount,
                     versionClickThreshold = versionClickThreshold,
                     easterEggEnabled = easterEggEnabled,
-                    updateStatusText = updateStatusText,
-                    isCheckingUpdate = isCheckingUpdate,
-                    autoCheckUpdateEnabled = autoCheckUpdateEnabled,
-                    appUpdateChannel = appUpdateChannel,
                     privacyContentAuthenticationEnabled = privacyContentAuthenticationEnabled,
-                    verificationLabel = buildVerificationLabel,
-                    verificationSubtitle = buildVerificationState.summary,
-                    buildSourceValue = buildSourceValue,
-                    buildSourceSubtitle = buildSourceSubtitle,
-                    buildFingerprintValue = buildFingerprintValue,
-                    buildFingerprintCopyValue = buildFingerprintCopyValue,
-                    buildFingerprintSubtitle = buildFingerprintSubtitle,
                     cardAnimationEnabled = state.cardAnimationEnabled,
                     isBottomBarFloating = state.isBottomBarFloating,
                     bottomBarLabelMode = state.bottomBarLabelMode,
@@ -1176,11 +711,6 @@ private fun MobileSettingsNavLayout(
     onLicenseClick: () -> Unit,
     onDisclaimerClick: () -> Unit,
     onGithubClick: () -> Unit,
-    onVerificationClick: () -> Unit,
-    onBuildSourceClick: () -> Unit,
-    onBuildFingerprintClick: () -> Unit,
-    onCheckUpdateClick: () -> Unit,
-    onViewReleaseNotesClick: () -> Unit,
     onVersionClick: () -> Unit,
     onReplayOnboardingClick: () -> Unit,
     onTelegramClick: () -> Unit,
@@ -1204,8 +734,6 @@ private fun MobileSettingsNavLayout(
     onAnalyticsChange: (Boolean) -> Unit,
     onEnhancedDiagnosticLoggingChange: (Boolean) -> Unit,
     onEasterEggChange: (Boolean) -> Unit,
-    onAutoCheckUpdateChange: (Boolean) -> Unit,
-    onAppUpdateChannelChange: (SettingsManager.AppUpdateChannel) -> Unit,
     privacyModeEnabled: Boolean,
     searchSuggestionsEnabled: Boolean,
     privacyContentAuthenticationEnabled: Boolean,
@@ -1223,17 +751,6 @@ private fun MobileSettingsNavLayout(
     versionClickCount: Int,
     versionClickThreshold: Int,
     easterEggEnabled: Boolean,
-    updateStatusText: String,
-    isCheckingUpdate: Boolean,
-    autoCheckUpdateEnabled: Boolean,
-    appUpdateChannel: SettingsManager.AppUpdateChannel,
-    verificationLabel: String,
-    verificationSubtitle: String,
-    buildSourceValue: String,
-    buildSourceSubtitle: String,
-    buildFingerprintValue: String,
-    buildFingerprintCopyValue: String,
-    buildFingerprintSubtitle: String,
     cardAnimationEnabled: Boolean,
     isBottomBarFloating: Boolean,
     bottomBarLabelMode: Int,
@@ -1292,11 +809,6 @@ private fun MobileSettingsNavLayout(
         onCreditsClick = onCreditsClick,
         onDisclaimerClick = onDisclaimerClick,
         onLicenseClick = onLicenseClick,
-        onVerificationClick = onVerificationClick,
-        onBuildSourceClick = onBuildSourceClick,
-        onBuildFingerprintClick = onBuildFingerprintClick,
-        onCheckUpdateClick = onCheckUpdateClick,
-        onViewReleaseNotesClick = onViewReleaseNotesClick,
         onVersionClick = onVersionClick,
         onReplayOnboardingClick = onReplayOnboardingClick,
         onTipsClick = onTipsClick,
@@ -1308,8 +820,6 @@ private fun MobileSettingsNavLayout(
         onAnalyticsChange = onAnalyticsChange,
         onEnhancedDiagnosticLoggingChange = onEnhancedDiagnosticLoggingChange,
         onEasterEggChange = onEasterEggChange,
-        onAutoCheckUpdateChange = onAutoCheckUpdateChange,
-        onAppUpdateChannelChange = onAppUpdateChannelChange,
         onFeedApiTypeChange = onFeedApiTypeChange,
         onIncrementalTimelineRefreshChange = onIncrementalTimelineRefreshChange,
         onDynamicImagePreviewTextVisibleChange = onDynamicImagePreviewTextVisibleChange,
@@ -1335,17 +845,6 @@ private fun MobileSettingsNavLayout(
         versionName = versionName,
         appIcon = appIcon,
         easterEggEnabled = easterEggEnabled,
-        updateStatusText = updateStatusText,
-        isCheckingUpdate = isCheckingUpdate,
-        autoCheckUpdateEnabled = autoCheckUpdateEnabled,
-        appUpdateChannel = appUpdateChannel,
-        verificationLabel = verificationLabel,
-        verificationSubtitle = verificationSubtitle,
-        buildSourceValue = buildSourceValue,
-        buildSourceSubtitle = buildSourceSubtitle,
-        buildFingerprintValue = buildFingerprintValue,
-        buildFingerprintCopyValue = buildFingerprintCopyValue,
-        buildFingerprintSubtitle = buildFingerprintSubtitle,
         versionClickCount = versionClickCount,
         versionClickThreshold = versionClickThreshold,
         feedApiType = feedApiType,

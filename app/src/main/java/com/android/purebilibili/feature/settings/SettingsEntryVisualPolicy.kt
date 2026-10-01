@@ -65,8 +65,6 @@ private fun resolveIosSettingsEntryTint(
     SettingsSearchTarget.EXPORT_LOGS -> iOSTeal
     SettingsSearchTarget.OPEN_SOURCE_LICENSES -> iOSOrange
     SettingsSearchTarget.OPEN_SOURCE_HOME -> iOSPurple
-    SettingsSearchTarget.CHECK_UPDATE -> iOSBlue
-    SettingsSearchTarget.VIEW_RELEASE_NOTES -> iOSTeal
     SettingsSearchTarget.REPLAY_ONBOARDING -> iOSPink
     SettingsSearchTarget.TIPS -> iOSOrange
     SettingsSearchTarget.OPEN_LINKS -> iOSTeal

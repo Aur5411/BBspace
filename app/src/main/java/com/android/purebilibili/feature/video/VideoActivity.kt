@@ -416,6 +416,10 @@ class VideoActivity : ComponentActivity() {
 
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
+        // 与 MainActivity 对齐：按 Home 键时标记离开提示时间窗，
+        // 后台播放判定据此区分「按 Home 退到后台」与「按返回键离开播放页」。
+        MiniPlayerManager.getInstance(this).markUserLeaveHint()
+        MiniPlayerManager.getInstance(this).refreshMediaSessionBinding()
         //  [修复] 使用 SettingsManager 读取正确的小窗模式设置
         val mode = com.android.purebilibili.core.store.SettingsManager.getMiniPlayerModeSync(this)
         val shouldEnterPip = mode.supportsSystemPip

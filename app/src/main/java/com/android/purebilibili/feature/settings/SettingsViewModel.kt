@@ -51,17 +51,6 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
-enum class SettingsDiagnosticsLoadState {
-    NOT_LOADED,
-    LOADING,
-    LOADED,
-}
-
-internal fun shouldStartSettingsDiagnostics(
-    loadState: SettingsDiagnosticsLoadState,
-    jobActive: Boolean,
-): Boolean = loadState != SettingsDiagnosticsLoadState.LOADED && !jobActive
-
 data class SettingsUiState(
     val themeSelection: AppUiStyle = AppUiStyle.MATERIAL3,
     val hwDecode: Boolean = true,
@@ -100,10 +89,6 @@ data class SettingsUiState(
     val smartVisualGuardEnabled: Boolean = false, // [Retired] 智能流畅优先已下线
     val cacheSize: String = "计算中...",
     val cacheBreakdown: CacheUtils.CacheBreakdown? = null,  //  详细缓存统计
-    val installedApkSha256: String? = null,
-    val currentReleaseEvidence: AppUpdateCheckResult? = null,
-    val diagnosticsLoadState: SettingsDiagnosticsLoadState =
-        SettingsDiagnosticsLoadState.NOT_LOADED,
     //  实验性功能
     val auto1080p: Boolean = true,
     val autoSkipOpEd: Boolean = false,
@@ -298,12 +283,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     private val context = application.applicationContext
 
-    private data class DiagnosticsState(
-        val installedApkSha256: String? = null,
-        val currentReleaseEvidence: AppUpdateCheckResult? = null,
-        val loadState: SettingsDiagnosticsLoadState = SettingsDiagnosticsLoadState.NOT_LOADED,
-    )
-
     private data class UiSettingsGroup1(
         val gestureSensitivity: Float,
         val themeColorIndex: Int,
@@ -320,8 +299,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     // 本地状态流：缓存大小
     private val _cacheSize = MutableStateFlow("计算中...")
     private val _cacheBreakdown = MutableStateFlow<CacheUtils.CacheBreakdown?>(null)
-    private val _diagnosticsState = MutableStateFlow(DiagnosticsState())
-    private var diagnosticsLoadJob: Job? = null
 
     //  [核心修复] 分步合并，解决 combine 参数限制报错
     // 第 1 步：合并前 4 个设置
@@ -641,8 +618,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         baseSettingsFlow,
         cacheFlow,
         experimentalSettingsFlow,
-        _diagnosticsState,
-    ) { settings, cache, experimental, diagnostics ->
+    ) { settings, cache, experimental ->
         SettingsUiState(
             themeSelection = settings.themeSelection,
             hwDecode = settings.hwDecode,
@@ -698,9 +674,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
             cacheSize = cache.first,
             cacheBreakdown = cache.second,  //  详细缓存统计
-            installedApkSha256 = diagnostics.installedApkSha256,
-            currentReleaseEvidence = diagnostics.currentReleaseEvidence,
-            diagnosticsLoadState = diagnostics.loadState,
             //  实验性功能
             auto1080p = experimental.auto1080p,
             autoSkipOpEd = experimental.autoSkipOpEd,
@@ -729,49 +702,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             _cacheSize.value = breakdown.format()
             _cacheBreakdown.value = breakdown
         }
-    }
-
-    fun ensureDiagnosticsLoaded() {
-        if (!shouldStartSettingsDiagnostics(
-                loadState = _diagnosticsState.value.loadState,
-                jobActive = diagnosticsLoadJob?.isActive == true,
-            )
-        ) {
-            return
-        }
-        diagnosticsLoadJob = viewModelScope.launch {
-            _diagnosticsState.update {
-                it.copy(loadState = SettingsDiagnosticsLoadState.LOADING)
-            }
-            try {
-                val (installedApkSha256, releaseEvidence) = coroutineScope {
-                    val digest = async { calculateInstalledApkSha256(context) }
-                    val release = async {
-                        AppUpdateChecker
-                            .check(
-                                currentVersion = com.android.purebilibili.BuildConfig.VERSION_NAME,
-                                currentVersionCode = com.android.purebilibili.BuildConfig.VERSION_CODE
-                            )
-                            .getOrNull()
-                    }
-                    digest.await() to release.await()
-                }
-                _diagnosticsState.value = DiagnosticsState(
-                    installedApkSha256 = installedApkSha256,
-                    currentReleaseEvidence = releaseEvidence,
-                    loadState = SettingsDiagnosticsLoadState.LOADED,
-                )
-            } catch (error: CancellationException) {
-                _diagnosticsState.update {
-                    it.copy(loadState = SettingsDiagnosticsLoadState.NOT_LOADED)
-                }
-                throw error
-            }
-        }
-    }
-
-    fun recordReleaseEvidence(evidence: AppUpdateCheckResult) {
-        _diagnosticsState.update { it.copy(currentReleaseEvidence = evidence) }
     }
 
     suspend fun clearCache(

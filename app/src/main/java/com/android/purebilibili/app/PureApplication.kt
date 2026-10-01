@@ -193,13 +193,17 @@ class PureApplication : Application(), SingletonImageLoader.Factory, ComponentCa
 
         // 启动即确保首页视觉默认值生效：底栏悬浮 + 液态玻璃 + 顶部模糊
         // 冷启动路径不阻塞主线程，迁移改为后台执行。
+        // 随后把 DataStore 的播放设置回灌 SharedPreferences 镜像：设置分享导入等
+        // 批量写入只动 DataStore，会把镜像留在旧值上，表现为「后台播放显示已开启却不起作用」。
         if (PureApplicationRuntimeConfig.shouldBlockStartupForHomeVisualDefaultsMigration()) {
             runBlocking(Dispatchers.IO) {
                 SettingsManager.ensureHomeVisualDefaults(this@PureApplication)
+                SettingsManager.reconcileMiniPlayerMirrors(this@PureApplication)
             }
         } else {
             AppScope.ioScope.launch {
                 SettingsManager.ensureHomeVisualDefaults(this@PureApplication)
+                SettingsManager.reconcileMiniPlayerMirrors(this@PureApplication)
             }
         }
         startupOrchestrator.runImmediate(::runStartupTask)

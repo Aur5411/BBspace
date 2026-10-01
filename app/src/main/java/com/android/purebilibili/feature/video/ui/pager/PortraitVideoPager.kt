@@ -750,6 +750,18 @@ fun PortraitVideoPager(
 
     LaunchedEffect(exoPlayer, isPortraitPlaybackAllowed) {
         if (isPortraitPlaybackAllowed) return@LaunchedEffect
+        // 页面失活的两种原因要分开处理：
+        // - 切到别的标签页/离开竖屏流：必须停；
+        // - 只是整个应用退到后台（按 Home）且用户开了后台播放：继续播。
+        // 这里用应用级后台标志区分，避免把「切标签页」也当成后台播放放行。
+        val miniPlayerManager = com.android.purebilibili.feature.video.player
+            .MiniPlayerManager.getInstance(context)
+        if (
+            com.android.purebilibili.core.lifecycle.BackgroundManager.isInBackground &&
+            miniPlayerManager.shouldContinueBackgroundAudio()
+        ) {
+            return@LaunchedEffect
+        }
         // 作废仍在请求播放详情/地址的任务，避免页面失活后旧结果重新开启播放。
         if (pendingAutoPlayGeneration >= 0) {
             activeLoadGeneration += 1

@@ -14,6 +14,48 @@ import kotlin.test.assertTrue
 class BackgroundPlaybackPolicyTest {
 
     @Test
+    fun pressingHomeKeepsBackgroundAudioEvenWhenStopOnExitEnabled() {
+        assertTrue(
+            shouldContinueBackgroundAudioByPolicy(
+                backgroundPlaybackEnabled = true,
+                mode = SettingsManager.MiniPlayerMode.OFF,
+                isActive = true,
+                isLeavingByNavigation = false,
+                stopPlaybackOnExit = true,
+                leftByHomeKey = true
+            )
+        )
+    }
+
+    @Test
+    fun pressingHomeIgnoresStaleNavigationLeaveFlag() {
+        assertTrue(
+            shouldContinueBackgroundAudioByPolicy(
+                backgroundPlaybackEnabled = true,
+                mode = SettingsManager.MiniPlayerMode.OFF,
+                isActive = true,
+                isLeavingByNavigation = true,
+                stopPlaybackOnExit = false,
+                leftByHomeKey = true
+            )
+        )
+    }
+
+    @Test
+    fun pressingHomeStillRespectsDisabledBackgroundPlayback() {
+        assertFalse(
+            shouldContinueBackgroundAudioByPolicy(
+                backgroundPlaybackEnabled = false,
+                mode = SettingsManager.MiniPlayerMode.OFF,
+                isActive = true,
+                isLeavingByNavigation = false,
+                stopPlaybackOnExit = false,
+                leftByHomeKey = true
+            )
+        )
+    }
+
+    @Test
     fun inAppMiniPlayerShownOnlyWhenEligible() {
         assertTrue(
             shouldShowInAppMiniPlayerByPolicy(
