@@ -650,6 +650,46 @@ class AnimeViewModel(application: Application) : AndroidViewModel(application) {
 
     private var downloadSourceJob: kotlinx.coroutines.Job? = null
 
+    /** 用户是否主动检索过 BT/磁力源 —— 换集时据此决定「自动重搜」还是「回到 Idle」。 */
+    private var downloadSourceRequested = false
+
+    /**
+     * 磁力面板选定的下载源 id; null = 全部源。
+     * ★ 需求: 允许「只在这一个源里搜」, 避免多源结果混在一起难挑。
+     */
+    private val _downloadSourceId = MutableStateFlow<String?>(null)
+    val downloadSourceId: StateFlow<String?> = _downloadSourceId.asStateFlow()
+
+    /**
+     * 是否「整部番剧搜全部集数」。
+     * ★ 需求: 选定源后一次把这部番在该源里的所有集数都列出来, 而不是只搜当前集。
+     */
+    private val _downloadAllEpisodes = MutableStateFlow(false)
+    val downloadAllEpisodes: StateFlow<Boolean> = _downloadAllEpisodes.asStateFlow()
+
+    /** 选源: 立即按新源重搜(若此前已经搜过)。 */
+    fun selectDownloadSource(id: String?) {
+        if (_downloadSourceId.value == id) return
+        _downloadSourceId.value = id
+        reloadDownloadSourcesIfRequested()
+    }
+
+    /** 切换「只搜当前集 / 搜全部集数」: 立即按新模式重搜(若此前已经搜过)。 */
+    fun setDownloadAllEpisodes(all: Boolean) {
+        if (_downloadAllEpisodes.value == all) return
+        _downloadAllEpisodes.value = all
+        reloadDownloadSourcesIfRequested()
+    }
+
+    /** 换集时用最新的一集重新检索(只在需要时触发, 见调用处)。 */
+    private fun reloadDownloadSourcesIfRequested() {
+        val query = pendingDownloadQuery ?: return
+        if (downloadSourceRequested) loadDownloadSources(query)
+    }
+
+    /** 最近一次检索用的 query —— 换集/换源后重搜都基于它换掉集数或源。 */
+    private var pendingDownloadQuery: AniMediaQuery? = null
+
     /**
      * 为某一话检索可用的媒体源 (换源面板的数据来源)。
      *
@@ -730,14 +770,52 @@ class AnimeViewModel(application: Application) : AndroidViewModel(application) {
 
     /** 「下载」面板: 检索 BT/磁力源(蜜柑 RSS 等)。 */
     fun loadDownloadSources(query: AniMediaQuery) {
+        downloadSourceRequested = true
+        pendingDownloadQuery = query
+        val sourceId = _downloadSourceId.value
+        val allEpisodes = _downloadAllEpisodes.value
         downloadSourceJob?.cancel()
         downloadSourceJob = viewModelScope.launch {
             _downloadSourceState.value = AniSourceState.Loading
-            val result = AniMediaSourceRepository.search(
-                query,
-                kinds = setOf(AniMediaSourceKind.BT, AniMediaSourceKind.CUSTOM),
+            val result = AniMediaSourceRepository.searchDownloadSources(
+                query = query,
+                sourceId = sourceId,
+                allEpisodes = allEpisodes,
             )
             _downloadSourceState.value = AniSourceState.Success(result)
+        }
+    }
+
+    /**
+     * 换集时同步磁力面板状态。
+     *
+     * ★ bug 修复: 之前换集只重置了在线源([resetMediaSources]), 磁力面板的状态
+     *   既没人清也没人重搜 —— 切到下一集后面板里仍是上一集的资源, 用户会误以为
+     *   「这就是本集的资源」。
+     *
+     * 规则:
+     *  - 「搜全部集数」模式  → 结果本来就覆盖整部番, 换集不需要动
+     *  - 面板正开着        → 按新集自动重搜
+     *  - 面板没开着        → 回到 Idle(不白跑请求), 下次打开点搜索自然搜新一集
+     */
+    fun onEpisodeChangedForDownloadSources(query: AniMediaQuery, panelVisible: Boolean) {
+        val previous = pendingDownloadQuery
+        pendingDownloadQuery = query
+        if (_downloadAllEpisodes.value) {
+            // 「全部集数」结果本来就覆盖整部番, 换集不用重搜;
+            // 但换成**另一部番剧**时必须清掉, 否则挂着上一部番的资源
+            if (previous != null && previous.bangumiId != query.bangumiId) {
+                downloadSourceRequested = false
+                _downloadSourceState.value = AniSourceState.Idle
+            }
+            return
+        }
+        downloadSourceJob?.cancel()
+        if (panelVisible && downloadSourceRequested) {
+            loadDownloadSources(query)
+        } else {
+            downloadSourceRequested = false
+            _downloadSourceState.value = AniSourceState.Idle
         }
     }
 

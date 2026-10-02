@@ -85,6 +85,31 @@ val AniMediaCandidate.isDirectMediaUrl: Boolean
         return path.endsWith(".m3u8") || path.endsWith(".mp4") || path.endsWith(".flv")
     }
 
+/**
+ * 从种子标题里猜集数, 用于「整个下载源搜全部集数」时按集分组。
+ *
+ * 覆盖常见命名: " - 01 "、"[01]"、"第01话"、"E01"、" 01 [1080p]"。
+ * 返回 null 表示认不出来（UI 里归到「其他」）。
+ */
+val AniMediaCandidate.episodeNumberGuess: Int?
+    get() {
+        val t = title
+        val patterns = listOf(
+            Regex("""第\s*(\d{1,4})\s*[话話集]"""),
+            // E01 / EP01 —— 用 \b 卡边界, 避免 "x264"/"Ma10p" 这类编码串被误认
+            Regex("""\b[Ee][Pp]?\s*(\d{1,4})(?:\D|$)"""),
+            // " - 01 " 这种最常见的命名; 后面必须是空格/方括号/结尾, 排除 "-10bit"
+            Regex("""[-–—]\s*(\d{1,4})\s*(?:[\[\s]|$)"""),
+            Regex("""\[\s*(\d{1,4})\s*]"""),
+            Regex("""\s(\d{1,4})\s*[\[（(]"""),
+        )
+        for (p in patterns) {
+            val v = p.find(t)?.groupValues?.get(1)?.toIntOrNull()
+            if (v != null && v in 1..2000) return v
+        }
+        return null
+    }
+
 /** URL 是否疑似网页/跳转地址（下载应避开——下回去是几 KB 的 HTML）。 */
 val AniMediaCandidate.isProbablyWebPage: Boolean
     get() {

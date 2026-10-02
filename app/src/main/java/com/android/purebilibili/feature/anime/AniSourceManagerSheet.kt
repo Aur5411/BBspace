@@ -55,6 +55,7 @@ fun AniSourceManagerSheet(onDismiss: () -> Unit) {
     var preferred by remember { mutableStateOf(AniSourcePreference.getPreferred(context)) }
     var latencies by remember { mutableStateOf<Map<String, Long>>(emptyMap()) }
     var testing by remember { mutableStateOf(false) }
+    val latencyLock = remember { Any() }
 
     fun persist(next: List<String>) {
         preferred = next
@@ -64,7 +65,13 @@ fun AniSourceManagerSheet(onDismiss: () -> Unit) {
     fun testAll() {
         scope.launch {
             testing = true
-            latencies = AniSourcePreference.measureAll(context)
+            latencies = emptyMap()
+            // 流式上屏: 每测完一个源立刻显示, 不等全部结束
+            AniSourcePreference.measureAll(context) { id, ms ->
+                synchronized(latencyLock) {
+                    latencies = latencies + (id to ms)
+                }
+            }
             testing = false
         }
     }

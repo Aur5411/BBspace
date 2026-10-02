@@ -16,15 +16,21 @@ import com.android.purebilibili.data.model.animeko.AniMediaQuery
 import com.android.purebilibili.data.model.animeko.AniMediaSource
 import com.android.purebilibili.data.model.animeko.AniMediaSourceKind
 import com.android.purebilibili.data.model.animeko.AniOnlineCatalog
+import com.android.purebilibili.data.model.animeko.episodeNumberGuess
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.net.URLEncoder
+import java.util.concurrent.TimeUnit
 
 private const val TAG = "AniMediaSourceRepo"
+
+/** 单个 maccms 采集源的检索总时限(毫秒): 超过后放弃剩余关键字。 */
+private const val SOURCE_DEADLINE_MS = 25_000L
 
 /** 换源结果。 */
 data class AniMediaSearchResult(
@@ -44,6 +50,21 @@ data class AniSourceStatus(
 )
 
 object AniMediaSourceRepository {
+
+    /**
+     * 采集接口专用客户端: 短超时。
+     *
+     * ★ 2026-10: 之前直接用 AnimekoNetwork 的 15s/20s 客户端, 一个挂起的采集站
+     *   会把「换源/首播」拖到分钟级（关键字逐个重试 × 每步超时）。收紧后单个
+     *   请求最多 12s, 配合 [SOURCE_DEADLINE_MS] 保证烂站不拖累整页结果。
+     */
+    private val client: OkHttpClient = AnimekoNetwork.okHttpClient.newBuilder()
+        .connectTimeout(5, TimeUnit.SECONDS)
+        .readTimeout(8, TimeUnit.SECONDS)
+        .writeTimeout(8, TimeUnit.SECONDS)
+        .callTimeout(12, TimeUnit.SECONDS)
+        .retryOnConnectionFailure(false)
+        .build()
 
     /**
      * 按查询条件到所有启用的源里找候选资源。
@@ -145,6 +166,70 @@ object AniMediaSourceRepository {
     }
 
     /**
+     * 「下载源」面板专用检索: 可以指定**单个源**, 也可以一次把整部番剧的资源都列出来。
+     *
+     * ★ 需求: 在磁力面板里先选一个源(蜜柑 / nyaa / AnimeGarden), 直接在这个源里把
+     *   整部番剧的种子都搜出来, 一集一集挑着复制 —— 之前只能逐个换集去搜, 很折腾。
+     *
+     * 与 [search] 的区别:
+     *  - 只检索 BT / 自定义源（下载面板不关心在线直链源）
+     *  - 可以锁定到单个源（用户明确指定「就在这个源里搜」）
+     *  - [allEpisodes] = true 时不做集数过滤, 该源里这部番的条目全部返回
+     *
+     * @param sourceId 只检索这个源; null = 全部 BT/自定义源
+     * @param allEpisodes true = 列出该源里所有集数, false = 只保留与当前集匹配的
+     */
+    suspend fun searchDownloadSources(
+        query: AniMediaQuery,
+        sourceId: String? = null,
+        allEpisodes: Boolean = false,
+        enabledIds: Set<String> = AniBuiltinSources.defaultEnabledIds,
+    ): AniMediaSearchResult = withContext(Dispatchers.IO) {
+        val sources = (query.sources.ifEmpty { AniBuiltinSources.builtins })
+            .filter { it.enabled && it.id in enabledIds }
+            .filter {
+                it.kindEnum == AniMediaSourceKind.BT || it.kindEnum == AniMediaSourceKind.CUSTOM
+            }
+            .filter { sourceId == null || it.id == sourceId }
+        if (sources.isEmpty()) return@withContext AniMediaSearchResult(emptyList(), emptyList())
+
+        val results = coroutineScope {
+            sources.map { source ->
+                async(Dispatchers.IO) {
+                    val list = runCatching {
+                        fetchRssCandidates(source, query, filterEpisode = !allEpisodes)
+                    }.onFailure { e -> Logger.w(TAG, "下载源 ${source.name} 失败: ${e.message}") }
+                        .getOrDefault(emptyList())
+                    source to list
+                }
+            }.awaitAll()
+        }
+
+        val candidates = mutableListOf<AniMediaCandidate>()
+        val statuses = mutableListOf<AniSourceStatus>()
+        for ((source, list) in results) {
+            candidates += list
+            statuses += AniSourceStatus(
+                sourceId = source.id,
+                sourceName = source.name,
+                ok = list.isNotEmpty(),
+                count = list.size,
+                message = if (list.isEmpty()) "这个源没搜到资源" else "",
+            )
+        }
+
+        AniMediaSearchResult(
+            // 全集数模式: 按集号升序排, 认不出集数的丢末尾; 同集内做种多的在前
+            candidates = candidates.sortedWith(
+                compareBy<AniMediaCandidate> { it.episodeNumberGuess ?: Int.MAX_VALUE }
+                    .thenByDescending { it.seeders }
+                    .thenByDescending { it.sizeBytes }
+            ),
+            sourceStatus = statuses,
+        )
+    }
+
+    /**
      * 在线源分发: web 站点源走三跳抓取, maccms 采集源走 JSON 接口。
      */
     private suspend fun fetchOnlineCandidates(
@@ -189,16 +274,22 @@ object AniMediaSourceRepository {
 
         var items: List<AniOnlineCatalog.CatalogItem> = emptyList()
         var lastError: String? = null
+        val startedNanos = System.nanoTime()
         for (keyword in keywords) {
+            // 总时限: 超过 25s 放弃该源, 不拖累其它源的结果上屏
+            if (System.nanoTime() - startedNanos > SOURCE_DEADLINE_MS * 1_000_000L) {
+                Logger.w(TAG, "源 ${source.name} 检索超时(${SOURCE_DEADLINE_MS / 1000}s), 放弃剩余关键字")
+                break
+            }
             val request = Request.Builder()
                 .url(AniOnlineCatalog.detailUrl(baseUrl, keyword))
                 .header("User-Agent", MEDIA_SOURCE_USER_AGENT)
                 .header("Accept", "application/json, text/plain, */*")
                 .build()
             val body = try {
-                AnimekoNetwork.okHttpClient.newCall(request).execute().use { resp ->
+                client.newCall(request).execute().use { resp ->
                     if (!resp.isSuccessful) error("HTTP ${resp.code}")
-                    resp.body?.string().orEmpty()
+                    resp.body.string().orEmpty()
                 }
             } catch (e: Exception) {
                 lastError = e.message ?: "请求失败"
@@ -246,6 +337,8 @@ object AniMediaSourceRepository {
     private fun fetchRssCandidates(
         source: AniMediaSource,
         query: AniMediaQuery,
+        /** false = 不按集数过滤, 返回该源里这部番的所有条目(「搜全部集数」用)。 */
+        filterEpisode: Boolean = true,
     ): List<AniMediaCandidate> {
         val url = buildUrl(source, query) ?: return emptyList()
         val request = Request.Builder()
@@ -254,9 +347,9 @@ object AniMediaSourceRepository {
             .header("Accept", "application/rss+xml, application/xml, text/xml, */*")
             .build()
 
-        val body = AnimekoNetwork.okHttpClient.newCall(request).execute().use { resp ->
+        val body = client.newCall(request).execute().use { resp ->
             if (!resp.isSuccessful) error("HTTP ${resp.code}")
-            resp.body?.string().orEmpty()
+            resp.body.string().orEmpty()
         }
         if (body.isBlank()) return emptyList()
 
@@ -268,7 +361,7 @@ object AniMediaSourceRepository {
             parseRssItems(body)
         }
         return items
-            .let { items -> filterByEpisode(items, query) }
+            .let { items -> if (filterEpisode) filterByEpisode(items, query) else items }
             .map { item ->
                 AniMediaCandidate(
                     sourceId = source.id,

@@ -25,12 +25,19 @@ private const val TAG = "AniWebSourceFetcher"
 
 object AniWebSourceFetcher {
 
+    // ★ 2026-10: 三跳抓取原本复用 AnimekoNetwork 的 15s/20s 慢客户端, 一个挂起的站
+    //   能把整个源拖 30~60s（搜索关键字逐个重试 × 每步超时）。改用独立短超时客户端,
+    //   并在 fetchEpisode 里加单源总时限, 保证烂站只损失自己的时间片。
     private val client = AnimekoNetwork.okHttpClient.newBuilder()
-        .connectTimeout(6, TimeUnit.SECONDS)
-        .readTimeout(10, TimeUnit.SECONDS)
+        .connectTimeout(5, TimeUnit.SECONDS)
+        .readTimeout(7, TimeUnit.SECONDS)
+        .writeTimeout(7, TimeUnit.SECONDS)
+        .callTimeout(10, TimeUnit.SECONDS)
+        .retryOnConnectionFailure(false)
         .build()
 
-    private val http get() = AnimekoNetwork.okHttpClient
+    /** 单个 web 源的总检索时限(毫秒): 超过后放弃剩余关键字, 不拖累其它源。 */
+    private const val SOURCE_DEADLINE_MS = 25_000L
 
     // ---------------------------------------------------------------
     // 站点测速(用户要求: 优先用最快的站)
@@ -116,7 +123,13 @@ object AniWebSourceFetcher {
         latencyMs: Long = -1L,
     ): AniMediaCandidate? = withContext(Dispatchers.IO) {
         val keywords = buildSearchKeywords(subjectName, cfg.useOnlyFirstWord)
+        val startedNanos = System.nanoTime()
         for (keyword in keywords) {
+            // 总时限: 超过 25s 就放弃这个源, 让其它源的结果先走
+            if (System.nanoTime() - startedNanos > SOURCE_DEADLINE_MS * 1_000_000L) {
+                Logger.w(TAG, "${cfg.name} 检索超时(${SOURCE_DEADLINE_MS / 1000}s), 放弃剩余关键字")
+                return@withContext null
+            }
             try {
                 val candidate = tryKeyword(cfg, keyword, subjectName, episodeSort, latencyMs)
                 if (candidate != null) return@withContext candidate
@@ -303,8 +316,8 @@ object AniWebSourceFetcher {
             .header("User-Agent", WEB_UA)
             .header("Accept", "text/html,application/xhtml+xml,*/*;q=0.8")
             .build()
-        http.newCall(request).execute().use { resp ->
-            if (resp.isSuccessful) resp.body?.string().orEmpty().ifEmpty { null } else null
+        client.newCall(request).execute().use { resp ->
+            if (resp.isSuccessful) resp.body.string().orEmpty().ifEmpty { null } else null
         }
     } catch (e: Exception) {
         null

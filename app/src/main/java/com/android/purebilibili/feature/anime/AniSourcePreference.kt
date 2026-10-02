@@ -17,9 +17,15 @@ import com.android.purebilibili.data.model.animeko.AniMediaSourceKind
 import com.android.purebilibili.data.model.animeko.AniOnlineCatalog
 import com.android.purebilibili.data.model.animeko.AniWebSourceCatalog
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.net.HttpURLConnection
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 
 /** 一个可被管理的视频源。 */
 data class AniSourceEntry(
@@ -105,37 +111,71 @@ object AniSourcePreference {
         return "$scheme://" + afterScheme.substringBefore('/')
     }
 
+    private const val LATENCY_CACHE_TTL_MS = 5 * 60_000L
+    private const val PROBE_TIMEOUT_MS = 3_000L
+    private const val PROBE_UA =
+        "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/120.0 Mobile Safari/537.36"
+    private val latencyCache = ConcurrentHashMap<String, Pair<Long, Long>>()
+    private val probeClient: OkHttpClient by lazy {
+        AnimekoNetwork.okHttpClient.newBuilder()
+            .connectTimeout(PROBE_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+            .readTimeout(PROBE_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+            .writeTimeout(PROBE_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+            .callTimeout(PROBE_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+            .retryOnConnectionFailure(false)
+            .build()
+    }
+
     /**
-     * 逐个源测速(请求源站首页计时)。
+     * 并发测所有源的首字节延迟，不下载完整首页。
      *
+     * 每个源只发一次 `Range: bytes=0-0` 的轻量 GET（只读 1 字节即断开）：
+     * 不用 HEAD 是因为大量站点对 HEAD 返回 405/跳转，之前「HEAD 失败再补 GET」
+     * 会让慢站等两轮超时。结果缓存 5 分钟。
+     *
+     * @param onResult 每测完一个源立即回调一次（结果流式上屏，不用等全部完成）
      * @return id -> 毫秒; -1 表示不可达
      */
-    suspend fun measureAll(context: Context): Map<String, Long> = withContext(Dispatchers.IO) {
-        val client = AnimekoNetwork.okHttpClient
-        val result = linkedMapOf<String, Long>()
-        allSources().forEach { source ->
-            result[source.id] = runCatching {
-                val url = source.testUrl
-                if (url.isBlank()) return@runCatching -1L
-                val started = System.currentTimeMillis()
-                val request = Request.Builder()
-                    .url(url)
-                    .header(
-                        "User-Agent",
-                        "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/120.0 Mobile Safari/537.36",
-                    )
-                    .build()
-                client.newCall(request).execute().use { response ->
-                    if (response.code >= HttpURLConnection.HTTP_BAD_REQUEST) {
-                        -1L
-                    } else {
-                        // 触发一次响应头读取即可, 不下载整页
-                        response.body?.source()?.use { it.readByte() }
-                        System.currentTimeMillis() - started
+    suspend fun measureAll(
+        context: Context,
+        onResult: ((String, Long) -> Unit)? = null,
+    ): Map<String, Long> = coroutineScope {
+        val now = System.currentTimeMillis()
+        allSources().map { source ->
+            async(Dispatchers.IO) {
+                val cached = latencyCache[source.testUrl]
+                val latency = if (
+                    cached != null && now - cached.second < LATENCY_CACHE_TTL_MS
+                ) {
+                    cached.first
+                } else {
+                    measureOne(source.testUrl).also { measured ->
+                        latencyCache[source.testUrl] = measured to System.currentTimeMillis()
                     }
                 }
-            }.getOrDefault(-1L)
-        }
-        result
+                onResult?.invoke(source.id, latency)
+                source.id to latency
+            }
+        }.awaitAll().toMap(linkedMapOf())
     }
+
+    private fun measureOne(url: String): Long {
+        if (url.isBlank()) return -1L
+        val started = System.nanoTime()
+        val range = Request.Builder()
+            .url(url)
+            .header("User-Agent", PROBE_UA)
+            .header("Range", "bytes=0-0")
+            .build()
+        return runCatching {
+            probeClient.newCall(range).execute().use { response ->
+                if (response.code >= HttpURLConnection.HTTP_BAD_REQUEST) return -1L
+                response.body.byteStream().use { it.read() }
+                elapsedMillis(started)
+            }
+        }.getOrDefault(-1L)
+    }
+
+    private fun elapsedMillis(startedNanos: Long): Long =
+        ((System.nanoTime() - startedNanos) / 1_000_000L).coerceAtLeast(1L)
 }

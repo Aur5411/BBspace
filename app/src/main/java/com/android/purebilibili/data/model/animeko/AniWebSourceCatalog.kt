@@ -43,16 +43,8 @@ object AniWebSourceCatalog {
             homepage = "https://11kt.net",
             searchUrl = "https://11kt.net/index.php/vod/search.html?wd={keyword}",
         ),
-        AniWebSourceConfig(
-            id = "web_jibi", name = "叽哔动漫",
-            homepage = "https://www.jibi.cc",
-            searchUrl = "https://www.jibi.cc/index.php/vod/search.html?wd={keyword}",
-        ),
-        AniWebSourceConfig(
-            id = "web_fqdm", name = "番茄动漫",
-            homepage = "https://www.fqdm.cc",
-            searchUrl = "https://www.fqdm.cc/index.php/vod/search.html?wd={keyword}",
-        ),
+        // 2026-10 移除 web_jibi(叽哔动漫): 搜索页挂起 30s+, 拖慢整体检索;
+        //            web_fqdm(番茄动漫): 域名已失效(读超时)。均为直连实测。
         AniWebSourceConfig(
             id = "web_wedm", name = "微动漫",
             homepage = "https://www.vdm5.com",
@@ -111,15 +103,19 @@ object AniWebSourceCatalog {
     )
 
     /** bt1.json 里的 BT 聚合站(RSS)。 */
+    /**
+     * BT / 磁力源清单。
+     *
+     * ★ 2026-10 实测(中国直连):
+     *   - 蜜柑 mikanime.tv        ✅ 200, ~1s 返回 100 条, 主域 mikanani.me 不通
+     *   - AnimeGarden garden.breadio.wiki ✅ 200, ~2.5s 返回 100 条(Atom)
+     *   - nyaa.land               ❌ 403 + Cloudflare "Just a moment..." 挑战页,
+     *                                非浏览器客户端永远拿不到数据, 已移除
+     *   - nyaa.si / dmhy / acg.rip / bangumi.moe / miobt / acgnx  ❌ 超时(被墙)
+     *   - kisssub(爱恋) / comicat(漫猫)  ⚠️ 站点可达但 RSS 的 keyword 参数无效
+     *                                (任意关键词都返回全站最新 50 条), 不能当搜索源
+     */
     val btSources: List<AniMediaSource> = listOf(
-        AniMediaSource(
-            id = "bt_nyaa",
-            name = "nyaa.land(BT)",
-            kind = AniMediaSourceKind.BT.name,
-            homepage = "https://nyaa.land",
-            urlTemplate = "https://nyaa.land/?page=rss&q={title}&c=0_0&f=0",
-            note = "BT 资源聚合站, RSS 返回种子",
-        ),
         AniMediaSource(
             id = "bt_animegarden",
             name = "AnimeGarden(BT)",

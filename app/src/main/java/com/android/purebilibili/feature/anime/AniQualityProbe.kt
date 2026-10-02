@@ -17,7 +17,9 @@ package com.android.purebilibili.feature.anime
 import com.android.purebilibili.core.network.animeko.AnimekoNetwork
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.util.concurrent.TimeUnit
 
 /** 一档视频清晰度。height=0 表示解析不出来。 */
 data class AniVideoTier(
@@ -35,7 +37,14 @@ data class AniVideoTier(
 
 object AniQualityProbe {
 
-    private val client get() = AnimekoNetwork.okHttpClient
+    // 只拉 m3u8 首部 16KB, 用短超时客户端即可; 慢 CDN 不该拖住画质面板
+    private val client: OkHttpClient = AnimekoNetwork.okHttpClient.newBuilder()
+        .connectTimeout(5, TimeUnit.SECONDS)
+        .readTimeout(6, TimeUnit.SECONDS)
+        .writeTimeout(6, TimeUnit.SECONDS)
+        .callTimeout(10, TimeUnit.SECONDS)
+        .retryOnConnectionFailure(false)
+        .build()
 
     /** 分辨率解析结果缓存(url -> 最高档高度)。 */
     private val cache = HashMap<String, Int>()
@@ -60,7 +69,7 @@ object AniQualityProbe {
             .build()
         client.newCall(request).execute().use { resp ->
             if (!resp.isSuccessful) return emptyList()
-            val body = resp.body?.byteStream() ?: return emptyList()
+            val body = resp.body.byteStream()
             // master playlist 的档位声明在文件头部, 读前 16KB 足够
             val buf = ByteArray(16 * 1024)
             val n = body.read(buf)

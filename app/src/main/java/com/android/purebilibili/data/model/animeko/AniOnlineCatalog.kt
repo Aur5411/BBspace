@@ -34,9 +34,11 @@ object AniOnlineCatalog {
 
     const val ID_LZIAPI = "online_lziapi"
     const val ID_FFZY = "online_ffzy"
+    const val ID_FFZY5 = "online_ffzy5"
     const val ID_360ZY = "online_360zy"
     const val ID_BFZY = "online_bfzy"
     const val ID_HNNIU = "online_hongniu"
+    const val ID_HNNIU3 = "online_hongniu3"
     const val ID_ZUIDA = "online_zuida"
     const val ID_HUYA = "online_huya"
     const val ID_UNITY = "online_unity"
@@ -51,6 +53,9 @@ object AniOnlineCatalog {
         AniOnlineCatalogSource(ID_ZUIDA, "最大资源", "https://api.zuidapi.com"),
         AniOnlineCatalogSource(ID_HUYA, "虎牙资源", "https://www.huyaapi.com"),
         AniOnlineCatalogSource(ID_UNITY, "Unity资源", "https://api.ukuapi88.com"),
+        // ---- 2026-10 直连实测新增镜像(主域在某些网络下慢/被墙, 镜像另走一条线路) ----
+        AniOnlineCatalogSource(ID_FFZY5, "非凡资源·镜像", "https://ffzy5.tv"),
+        AniOnlineCatalogSource(ID_HNNIU3, "红牛资源·镜像", "https://www.hongniuzy3.com"),
     )
 
     val byId: Map<String, AniOnlineCatalogSource> = sources.associateBy { it.id }

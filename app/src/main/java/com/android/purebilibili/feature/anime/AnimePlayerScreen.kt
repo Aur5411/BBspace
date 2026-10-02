@@ -34,7 +34,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -97,15 +100,19 @@ import com.android.purebilibili.core.ui.AppSpacingTokens
 import com.android.purebilibili.core.ui.AppTopBar
 import com.android.purebilibili.core.ui.ImmersiveAppScaffold as AppScaffold
 import com.android.purebilibili.core.ui.components.AppButton
+import com.android.purebilibili.core.ui.components.AppFilterChip
 import com.android.purebilibili.core.ui.components.AppIcon
 import com.android.purebilibili.core.ui.components.AppIconButton
 import com.android.purebilibili.core.ui.components.AppSurface
 import com.android.purebilibili.core.ui.components.AppText
 import com.android.purebilibili.core.ui.components.AppTextButton
+import com.android.purebilibili.data.model.animeko.AniBuiltinSources
 import com.android.purebilibili.data.model.animeko.AniEpisode
 import com.android.purebilibili.data.model.animeko.AniMediaCandidate
 import com.android.purebilibili.data.model.animeko.AniMediaQuery
 import com.android.purebilibili.data.model.animeko.AniMediaSourceKind
+import com.android.purebilibili.data.model.animeko.AniMediaSource
+import com.android.purebilibili.data.model.animeko.episodeNumberGuess
 import com.android.purebilibili.data.model.animeko.AniSubjectDetail
 
 /**
@@ -239,6 +246,35 @@ fun AnimePlayerScreen(
     val hasNextEpisode = remember(playableEpisodes, currentEpisodeId) {
         val idx = playableEpisodes.indexOfFirst { it.episodeId == currentEpisodeId }
         idx >= 0 && idx + 1 < playableEpisodes.size
+    }
+
+    /**
+     * 当前正在播的那一集(找不到时退回第一集正片)。
+     * 磁力面板标题、换集自动重搜共用, 避免多处各写一份取集逻辑。
+     */
+    fun currentEpisodeForQuery(): AniEpisode? =
+        detail?.episodes?.firstOrNull { it.episodeId == currentEpisodeId }
+            ?: detail?.episodes?.firstOrNull { it.isMain }
+            ?: detail?.episodes?.firstOrNull()
+
+    /** 用当前集构造检索 query(在线源与 BT/磁力源共用同一份, 保证两边搜的是同一集)。 */
+    fun mediaQueryForCurrentEpisode(): AniMediaQuery? {
+        val d = detail ?: return null
+        val ep = currentEpisodeForQuery() ?: return null
+        return AniMediaQuery(
+            bangumiId = subjectId,
+            subjectName = d.displayName,
+            episodeSort = ep.displayEp,
+            episodeName = ep.displayName,
+            episodeId = ep.episodeId,
+        )
+    }
+
+    /** 磁力面板可选的下载源(BT / 自定义); UI 里另外提供「全部源」这一项。 */
+    val btSourceOptions = remember {
+        AniBuiltinSources.builtins.filter {
+            it.kindEnum == AniMediaSourceKind.BT || it.kindEnum == AniMediaSourceKind.CUSTOM
+        }
     }
 
     /** 切到下一集(复用当前源; 找不到再回退全量搜索)。 */
@@ -433,17 +469,21 @@ fun AnimePlayerScreen(
             ?: d.episodes.firstOrNull { it.isMain }
             ?: d.episodes.firstOrNull()
             ?: return@LaunchedEffect
+        val query = AniMediaQuery(
+            bangumiId = subjectId,
+            subjectName = d.displayName,
+            episodeSort = ep.displayEp,
+            episodeName = ep.displayName,
+            episodeId = ep.episodeId,
+        )
         viewModel.loadMediaSources(
-            AniMediaQuery(
-                bangumiId = subjectId,
-                subjectName = d.displayName,
-                episodeSort = ep.displayEp,
-                episodeName = ep.displayName,
-                episodeId = ep.episodeId,
-            ),
+            query,
             // 有当前源时优先只搜它
             onlySourceId = preferredSourceId,
         )
+        // ★ 磁力/种子源面板同样跟着换集: 面板开着就按新集重搜, 没开就清空,
+        //   否则面板会一直显示上一集的资源(用户会误以为就是本集的)
+        viewModel.onEpisodeChangedForDownloadSources(query, panelVisible = showMagnetSheet)
     }
 
     // 优先源没搜到时回退全量检索(只回退一次, 避免循环)
@@ -1066,30 +1106,23 @@ fun AnimePlayerScreen(
     if (showMagnetSheet) {
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         val btState by viewModel.downloadSourceState.collectAsStateWithLifecycle()
+        val selectedBtSourceId by viewModel.downloadSourceId.collectAsStateWithLifecycle()
+        val allEpisodes by viewModel.downloadAllEpisodes.collectAsStateWithLifecycle()
         ModalBottomSheet(
             onDismissRequest = { showMagnetSheet = false },
             sheetState = sheetState,
         ) {
             AniMagnetSheetContent(
                 btState = btState,
+                episodeLabel = currentEpisodeForQuery()?.displayName.orEmpty(),
+                sourceOptions = btSourceOptions,
+                selectedSourceId = selectedBtSourceId,
+                onSelectSource = { viewModel.selectDownloadSource(it) },
+                allEpisodes = allEpisodes,
+                onToggleAllEpisodes = { viewModel.setDownloadAllEpisodes(it) },
                 onLoadBt = {
-                    detail?.let { d ->
-                        val ep = d.episodes.firstOrNull { it.episodeId == currentEpisodeId }
-                            ?: d.episodes.firstOrNull { it.isMain }
-                            ?: d.episodes.firstOrNull()
-                        if (ep != null) {
-                            viewModel.loadDownloadSources(
-                                AniMediaQuery(
-                                    bangumiId = subjectId,
-                                    subjectName = d.displayName,
-                                    episodeSort = ep.displayEp,
-                                    episodeName = ep.displayName,
-                                    episodeId = ep.episodeId,
-                                    mikanId = null,
-                                )
-                            )
-                        }
-                    }
+                    // ★ 统一用当前集构造 query —— 换集后点「搜索」必须搜的是新一集
+                    mediaQueryForCurrentEpisode()?.let { viewModel.loadDownloadSources(it) }
                 },
             )
         }
@@ -1360,10 +1393,20 @@ private const val SOURCE_FAILOVER_WATCHDOG_MS = 20_000L
  *
  * ★ v4.2.0: 番剧缓存下载功能已移除 —— 本 App 不再做下载,
  *   这里只检索 BT/磁力源, 供用户**复制链接**交给外部 BT 客户端。
+ *
+ * ★ 2026-10: 支持「选单个源 + 搜全部集数」: 在指定的那个源里把整部番的资源
+ *   一次列出来, 按集分组, 可以一集一集复制链接(也支持整集/全部一键复制)。
  */
 @Composable
 private fun AniMagnetSheetContent(
     btState: AniSourceState,
+    episodeLabel: String,
+    /** 可选的下载源(BT / 自定义), UI 里第一个是「全部源」。 */
+    sourceOptions: List<AniMediaSource>,
+    selectedSourceId: String?,
+    onSelectSource: (String?) -> Unit,
+    allEpisodes: Boolean,
+    onToggleAllEpisodes: (Boolean) -> Unit,
     onLoadBt: () -> Unit,
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -1379,25 +1422,70 @@ private fun AniMagnetSheetContent(
             onClick = { btSourceExpanded = !btSourceExpanded },
         )
         if (btSourceExpanded) {
+            // ---- 下载源: 选一个源就只在这个源里搜(源多时结果不再混在一起) ----
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = AppSpacingTokens.Small),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                AppFilterChip(
+                    selected = selectedSourceId == null,
+                    onClick = { onSelectSource(null) },
+                    label = { AppText("全部源") },
+                )
+                sourceOptions.forEach { src ->
+                    AppFilterChip(
+                        selected = selectedSourceId == src.id,
+                        onClick = { onSelectSource(src.id) },
+                        label = { AppText(src.name) },
+                    )
+                }
+            }
+
+            // ---- 检索范围: 只搜本集 / 把这部番在这个源里的所有集数都搜出来 ----
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = AppSpacingTokens.Small, vertical = 2.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                AppFilterChip(
+                    selected = !allEpisodes,
+                    onClick = { onToggleAllEpisodes(false) },
+                    label = { AppText("只搜本集") },
+                )
+                AppFilterChip(
+                    selected = allEpisodes,
+                    onClick = { onToggleAllEpisodes(true) },
+                    label = { AppText("搜全部集数") },
+                )
+                Spacer(Modifier.weight(1f))
+                AppTextButton(onClick = onLoadBt) {
+                    AppText(text = "搜索")
+                }
+            }
 
             when (val bt = btState) {
-                is AniSourceState.Idle -> {
-                    AppText(
-                        text = "磁力/种子源不参与在线播放, 仅供复制链接",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = AppSpacingTokens.Medium),
-                    )
-                    AppTextButton(
-                        onClick = onLoadBt,
-                        modifier = Modifier.padding(horizontal = AppSpacingTokens.Small),
-                    ) {
-                        AppText(text = "搜索 BT / 磁力源")
-                    }
-                }
+                is AniSourceState.Idle -> AppText(
+                    text = buildString {
+                        append("磁力/种子源不参与在线播放, 仅供复制链接")
+                        if (episodeLabel.isNotBlank()) append(" · 当前: $episodeLabel")
+                    },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = AppSpacingTokens.Medium),
+                )
 
                 is AniSourceState.Loading -> AppText(
-                    text = "正在检索 BT 源…",
+                    text = if (episodeLabel.isBlank()) {
+                        "正在检索 BT 源…"
+                    } else {
+                        "正在检索 $episodeLabel 的 BT 源…"
+                    },
                     style = MaterialTheme.typography.labelMedium,
                     color = colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(AppSpacingTokens.Medium),
@@ -1411,64 +1499,87 @@ private fun AniMagnetSheetContent(
                 )
 
                 is AniSourceState.Success -> {
-                    if (bt.result.isEmpty) {
+                    val candidates = bt.result.candidates
+                    // ★ 结果区顶部常驻一行: 当前集 + 条数 + 复制全部。
+                    //   既有结果时原来没有任何重新检索入口, 换集后只能干看着上一集的资源
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = AppSpacingTokens.Medium, vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         AppText(
-                            text = "BT 源没有搜到这一集",
+                            text = listOfNotNull(
+                                episodeLabel.ifBlank { null },
+                                "共 ${candidates.size} 条",
+                            ).joinToString(" · "),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f),
+                        )
+                        if (candidates.isNotEmpty()) {
+                            AppTextButton(onClick = {
+                                copyMagnetLinks(context, clipboard, candidates, "已复制 ${candidates.size} 条链接")
+                            }) {
+                                AppText(text = "复制全部")
+                            }
+                        }
+                    }
+                    if (candidates.isEmpty()) {
+                        AppText(
+                            text = if (allEpisodes) "这个源里没搜到这部番的资源" else "BT 源没有搜到这一集",
                             style = MaterialTheme.typography.labelMedium,
                             color = colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(AppSpacingTokens.Medium),
                         )
                     } else {
-                        bt.result.candidates.forEach { candidate ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = AppSpacingTokens.Medium, vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    // ★ 完整显示标题 —— 分辨率/字幕组信息就在标题里,
-                                    //   截断后用户无法判断该下哪一个
-                                    AppText(
-                                        text = candidate.title,
-                                        style = MaterialTheme.typography.labelMedium,
-                                    )
-                                    AppText(
-                                        text = listOfNotNull(
-                                            candidate.quality.ifBlank { null },
-                                            candidate.subtitleGroup.ifBlank { null },
-                                            candidate.sizeLabel.ifBlank { null },
-                                            if (candidate.seeders >= 0) "做种 ${candidate.seeders}" else null,
-                                        ).joinToString(" · ").ifBlank { candidate.sourceName },
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                                AppTextButton(onClick = {
-                                    clipboard?.setPrimaryClip(
-                                        android.content.ClipData.newPlainText("url", candidate.url)
-                                    )
-                                    android.widget.Toast.makeText(
-                                        context, "已复制链接", android.widget.Toast.LENGTH_SHORT,
-                                    ).show()
-                                }) {
-                                    AppText(text = "复制")
-                                }
-                                AppTextButton(onClick = {
-                                    runCatching {
-                                        context.startActivity(
-                                            android.content.Intent(
-                                                android.content.Intent.ACTION_VIEW,
-                                                android.net.Uri.parse(candidate.url),
-                                            ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                        // ★ 结果可能上百条: 只有结果区可滚动(占满剩余高度),
+                        //   标题栏保持固定, 否则超出弹窗一屏的条目永远看不到
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f, fill = false)
+                                .verticalScroll(rememberScrollState()),
+                        ) {
+                            if (allEpisodes) {
+                                // 搜全部集数: 按集分组, 每组可一键复制该集所有链接
+                                groupByEpisode(candidates).forEach { (episode, list) ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(
+                                                start = AppSpacingTokens.Medium,
+                                                end = AppSpacingTokens.Small,
+                                                top = AppSpacingTokens.Small,
+                                            ),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        AppText(
+                                            text = if (episode != null) {
+                                                "第 $episode 集 · ${list.size} 条"
+                                            } else {
+                                                "其他 · ${list.size} 条"
+                                            },
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = colorScheme.primary,
+                                            modifier = Modifier.weight(1f),
                                         )
-                                    }.onFailure {
-                                        android.widget.Toast.makeText(
-                                            context, "没有可处理磁力的应用", android.widget.Toast.LENGTH_SHORT,
-                                        ).show()
+                                        AppTextButton(onClick = {
+                                            copyMagnetLinks(
+                                                context, clipboard, list,
+                                                "已复制第 $episode 集的 ${list.size} 条链接",
+                                            )
+                                        }) {
+                                            AppText(text = "复制本集")
+                                        }
                                     }
-                                }) {
-                                    AppText(text = "外部下载")
+                                    list.forEach { candidate ->
+                                        AniMagnetCandidateRow(candidate, clipboard, context)
+                                    }
+                                }
+                            } else {
+                                candidates.forEach { candidate ->
+                                    AniMagnetCandidateRow(candidate, clipboard, context)
                                 }
                             }
                         }
@@ -1481,6 +1592,92 @@ private fun AniMagnetSheetContent(
     }
 }
 
+/** 磁力候选一行: 标题 + 信息 + 「复制」/「外部下载」。 */
+@Composable
+private fun AniMagnetCandidateRow(
+    candidate: com.android.purebilibili.data.model.animeko.AniMediaCandidate,
+    clipboard: android.content.ClipboardManager?,
+    context: android.content.Context,
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = AppSpacingTokens.Medium, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            // ★ 完整显示标题 —— 分辨率/字幕组信息就在标题里,
+            //   截断后用户无法判断该下哪一个
+            AppText(
+                text = candidate.title,
+                style = MaterialTheme.typography.labelMedium,
+            )
+            AppText(
+                text = listOfNotNull(
+                    candidate.quality.ifBlank { null },
+                    candidate.subtitleGroup.ifBlank { null },
+                    candidate.sizeLabel.ifBlank { null },
+                    if (candidate.seeders >= 0) "做种 ${candidate.seeders}" else null,
+                ).joinToString(" · ").ifBlank { candidate.sourceName },
+                style = MaterialTheme.typography.labelSmall,
+                color = colorScheme.onSurfaceVariant,
+            )
+        }
+        AppTextButton(onClick = {
+            clipboard?.setPrimaryClip(
+                android.content.ClipData.newPlainText("url", candidate.url)
+            )
+            android.widget.Toast.makeText(
+                context, "已复制链接", android.widget.Toast.LENGTH_SHORT,
+            ).show()
+        }) {
+            AppText(text = "复制")
+        }
+        AppTextButton(onClick = {
+            runCatching {
+                context.startActivity(
+                    android.content.Intent(
+                        android.content.Intent.ACTION_VIEW,
+                        android.net.Uri.parse(candidate.url),
+                    ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                )
+            }.onFailure {
+                android.widget.Toast.makeText(
+                    context, "没有可处理磁力的应用", android.widget.Toast.LENGTH_SHORT,
+                ).show()
+            }
+        }) {
+            AppText(text = "外部下载")
+        }
+    }
+}
+
+/** 批量复制磁力/种子链接(一条一行, 直接粘进 BT 客户端的批量任务)。 */
+private fun copyMagnetLinks(
+    context: android.content.Context,
+    clipboard: android.content.ClipboardManager?,
+    candidates: List<com.android.purebilibili.data.model.animeko.AniMediaCandidate>,
+    toast: String,
+) {
+    if (candidates.isEmpty()) return
+    clipboard?.setPrimaryClip(
+        android.content.ClipData.newPlainText("url", candidates.joinToString("\n") { it.url })
+    )
+    android.widget.Toast.makeText(context, toast, android.widget.Toast.LENGTH_SHORT).show()
+}
+
+/**
+ * 「搜全部集数」结果按集号分组。
+ *
+ * 认不出集数的条目归到最后一组(key = null), 不会因为解析失败就被藏起来。
+ */
+private fun groupByEpisode(
+    candidates: List<com.android.purebilibili.data.model.animeko.AniMediaCandidate>,
+): List<Pair<Int?, List<com.android.purebilibili.data.model.animeko.AniMediaCandidate>>> =
+    candidates.groupBy { it.episodeNumberGuess }
+        .toList()
+        .sortedWith(compareBy { it.first ?: Int.MAX_VALUE })
 /**
  * 播放器底部控制条: 播放/暂停 + 可拖动进度条 + 全屏。
  *
