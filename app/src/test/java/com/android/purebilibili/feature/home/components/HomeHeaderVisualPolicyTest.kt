@@ -10,6 +10,7 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.RectangleShape
 import com.android.purebilibili.core.store.HomeSettings
 import com.android.purebilibili.core.store.HomeTopRightAction
+import com.android.purebilibili.core.ui.AppTopTabPresentation
 import com.android.purebilibili.core.ui.blur.BlurSurfaceType
 import com.android.purebilibili.feature.home.HomeGlassResolvedColors
 import com.android.purebilibili.core.ui.blur.BlurIntensity

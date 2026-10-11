@@ -267,6 +267,21 @@ private fun playPlayerForUserIntent(
     if (ensurePlayWhenReady && !player.playWhenReady) {
         player.playWhenReady = true
     }
+    if (trackUserAction) {
+        // [修复] 用户显式点播放时恢复播放器音量。
+        // 会话非活跃挂起 / 小窗交接会把共享播放器临时静音（player.volume = 0f），
+        // 若此处不恢复，画面虽然在走但没有声音，用户感知就是「暂停之后无法继续播放，
+        // 得退出去重进」。MiniPlayerManager.togglePlayPause() 与媒体控制路径早已做同样恢复，
+        // 页面内播放按钮这条路此前漏了，这里补齐以保持行为一致。
+        com.android.purebilibili.core.player.PlayerVolumeController.applyPreferredVolume(player)
+    }
+    if (!hasMediaItems) {
+        Logger.w(
+            "VideoPlaybackUseCase",
+            "USER_DBG play requested but player has no media items: " +
+                "state=${player.playbackState}, playWhenReady=${player.playWhenReady}"
+        )
+    }
     player.play()
     Logger.d(
         "VideoPlaybackUseCase",

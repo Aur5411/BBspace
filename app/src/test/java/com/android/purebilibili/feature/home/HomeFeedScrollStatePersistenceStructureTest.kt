@@ -247,7 +247,7 @@ class HomeFeedScrollStatePersistenceStructureTest {
     }
 
     @Test
-    fun `home feed refilters existing content after ad filter configuration is ready`() {
+    fun `home feed refilters existing content after block plugin configuration is ready`() {
         val source = loadSource("app/src/main/java/com/android/purebilibili/feature/home/HomeViewModel.kt")
         val initSource = source
             .substringAfter("syncTodayWatchFeedbackFromStore()")
@@ -256,7 +256,7 @@ class HomeFeedScrollStatePersistenceStructureTest {
             .substringAfter("private fun reFilterAllContent()")
             .substringBefore("private fun resolveTodayWatchRuntimeConfig")
 
-        assertTrue(initSource.contains("PluginManager.awaitPluginReady(ADFILTER_PLUGIN_ID)"))
+        assertTrue(initSource.contains("PluginManager.awaitPluginReady(HoyoFairyBlockPlugin.PLUGIN_ID)"))
         assertTrue(initSource.contains("reFilterAllContent()"))
         assertTrue(refilterSource.contains("PluginManager.filterFeedItems("))
     }

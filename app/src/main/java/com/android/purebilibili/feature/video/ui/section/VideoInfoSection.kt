@@ -95,9 +95,14 @@ import com.android.purebilibili.feature.video.ui.components.ShimmerContainer
 import com.android.purebilibili.feature.video.ui.components.SkeletonBox
 import com.android.purebilibili.feature.video.ui.VideoDetailShapes
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.purebilibili.core.ui.AppShapes
 import com.android.purebilibili.core.ui.ContainerLevel
+import com.android.purebilibili.core.ui.AppAlertDialog
+import com.android.purebilibili.core.ui.AppDialogAction
+import com.android.purebilibili.feature.plugin.appendHoyoFairyBlockedKeyword
+import android.widget.Toast
 
 internal const val VIDEO_DESCRIPTION_URL_TAG = "VIDEO_DESCRIPTION_URL"
 private val VIDEO_DESCRIPTION_URL_PATTERN =
@@ -324,6 +329,9 @@ fun VideoTitleWithDesc(
     onRelatedVideoClick: (String, android.os.Bundle?) -> Unit = { _, _ -> }
 ) {
     val context = LocalContext.current
+    // 「长按标签 → 添加到屏蔽词列表」：写入「屏蔽净化」插件(hoyofairy_block)的关键词列表
+    val blockScope = rememberCoroutineScope()
+    var pendingBlockTag by remember { mutableStateOf<String?>(null) }
     val defaultExpanded by com.android.purebilibili.core.store.SettingsManager
         .getVideoInfoDefaultExpanded(context)
         .collectAsStateWithLifecycle(initialValue = true
@@ -679,11 +687,42 @@ fun VideoTitleWithDesc(
                         com.android.purebilibili.core.ui.components.AppTagChip(
                             label = tag.tag_name,
                             onClick = { onTagClick(tag.tag_name) },
-                            modifier = Modifier.copyOnLongPress(tag.tag_name, "标签"),
+                            // 长按标签 → 弹出「添加到屏蔽词列表」(写入「屏蔽净化」插件)
+                            onLongClick = { pendingBlockTag = tag.tag_name },
                         )
                     }
                 }
             }
+        }
+
+        pendingBlockTag?.let { tagName ->
+            AppAlertDialog(
+                onDismissRequest = { pendingBlockTag = null },
+                title = { AppText("添加到屏蔽词列表") },
+                text = {
+                    AppText(
+                        "将「$tagName」加入「屏蔽净化」插件的屏蔽词列表？\n\n" +
+                            "加入后，标题 / UP 名 / 分区 / 视频标签命中该词的视频会从信息流中隐藏" +
+                            "（标签匹配需在插件里开启「按视频标签精确过滤」）。"
+                    )
+                },
+                confirmButton = {
+                    AppDialogAction(onClick = {
+                        pendingBlockTag = null
+                        blockScope.launch {
+                            val added = appendHoyoFairyBlockedKeyword(context, tagName)
+                            Toast.makeText(
+                                context,
+                                if (added) "已加入屏蔽词列表：$tagName" else "「$tagName」已在屏蔽词列表中",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }) { AppText("加入") }
+                },
+                dismissButton = {
+                    AppDialogAction(onClick = { pendingBlockTag = null }) { AppText("取消") }
+                }
+            )
         }
     }
 }

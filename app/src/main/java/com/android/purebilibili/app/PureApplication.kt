@@ -304,7 +304,9 @@ class PureApplication : Application(), SingletonImageLoader.Factory, ComponentCa
 
     private fun initPluginStackNow() {
         PluginManager.register(SponsorBlockPlugin())
-        PluginManager.register(AdFilterPlugin())
+        // [已隐藏 · 与「屏蔽净化」功能冲突] 去广告增强：其「拉黑UP主 / 屏蔽关键词」与新插件重复，
+        // 内置广告词表已并入「屏蔽净化」的「广告推广（强化）」预置。需要恢复时取消下面注释即可。
+        // PluginManager.register(AdFilterPlugin())
         PluginManager.register(Anime4KPlugin())
         PluginManager.register(DanmakuEnhancePlugin())
         PluginManager.register(EyeProtectionPlugin())
@@ -313,10 +315,13 @@ class PureApplication : Application(), SingletonImageLoader.Factory, ComponentCa
         PluginManager.register(HomeFeedAnonymizerPlugin())
         PluginManager.register(DlnaCastPlugin())
         PluginManager.register(GoogleCastPlugin())
-        //  [BiliPai 移植] 推荐流过滤(默认关闭, 可在插件中心启用)
-        PluginManager.register(com.android.purebilibili.feature.plugin.BiliPaiFeedFilterPlugin())
+        // [已隐藏 · 与「屏蔽净化」功能冲突] 推荐流过滤：过滤维度（时长/播放量/点赞率/标题关键词/
+        // 屏蔽用户/白名单）与新插件完全重叠。需要恢复时取消下面注释即可。
+        // PluginManager.register(com.android.purebilibili.feature.plugin.BiliPaiFeedFilterPlugin())
         PluginManager.register(com.android.purebilibili.feature.plugin.SubscriptionFeedPlugin())
-        Logger.d(PureApplicationRuntimeConfig.TAG, " Plugin system initialized with 11 built-in plugins")
+        //  [biliHoyoFairy 移植] 多维屏蔽净化(默认关闭, 可在插件中心启用)
+        PluginManager.register(com.android.purebilibili.feature.plugin.HoyoFairyBlockPlugin())
+        Logger.d(PureApplicationRuntimeConfig.TAG, " Plugin system initialized with 10 built-in plugins")
 
         com.android.purebilibili.core.plugin.json.JsonPluginManager.initialize(this)
         Logger.d(PureApplicationRuntimeConfig.TAG, " JSON plugin system initialized")

@@ -196,6 +196,8 @@ data class VideoItem(
     val cid: Long = 0,   //  明确的 CID 字段，用于播放
     val title: String = "",
     val searchHighlightedTitle: String = "",
+    //  [New] 视频简介。推荐/热门等列表接口不返回简介，开启屏蔽词后按 bvid 惰性补齐。
+    val desc: String = "",
     val pic: String = "",
     val owner: Owner = Owner(),
     val stat: Stat = Stat(),

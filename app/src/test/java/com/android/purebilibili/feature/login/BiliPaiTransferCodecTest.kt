@@ -25,8 +25,13 @@ class BiliPaiTransferCodecTest {
     @Test
     fun expiredRequest_isRejected() {
         val key = KeyPairGenerator.getInstance("RSA").apply { initialize(2048) }.generateKeyPair()
-        val request = BiliPaiTransferRequest("id", "device", java.util.Base64.getUrlEncoder().withoutPadding()
-            .encodeToString(key.public.encoded), 0L)
+        val request = BiliPaiTransferRequest(
+            transferId = "id",
+            receiverDeviceId = "device",
+            receiverPublicKey = java.util.Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(key.public.encoded),
+            expiresAt = 0L,
+        )
         assertThrows(Exception::class.java) {
             BiliPaiTransferCodec.decodeRequest(BiliPaiTransferCodec.encodeRequest(request))
         }

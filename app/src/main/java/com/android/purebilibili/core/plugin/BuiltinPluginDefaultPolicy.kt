@@ -12,4 +12,6 @@ internal fun resolvePluginDefaultEnabled(pluginId: String): Boolean {
 private val BUILTIN_DEFAULT_ENABLED_PLUGIN_IDS = setOf(
     "dlna_cast",
     "google_cast",
+    // 屏蔽净化：默认开启，空规则时是无操作，加词后立即生效
+    "hoyofairy_block",
 )

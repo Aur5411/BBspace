@@ -1,5 +1,6 @@
 package com.android.purebilibili.core.ui.components
 
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
@@ -109,49 +110,91 @@ fun AppContentCard(
  * Compact tag / keyword chip:
  * - Material 3 → [AssistChip]
  * - Miuix → themed [Surface] with [ContainerLevel.Chip] / pill-scale corners
+ *
+ * 传入 [onLongClick] 时改用 combinedClickable 承载长按（AssistChip / Surface(onClick)
+ * 只支持单击），用于「长按标签 → 加入屏蔽词列表」这类二级操作。
  */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun AppTagChip(
     label: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    onLongClick: (() -> Unit)? = null,
 ) {
     val colorScheme = MaterialTheme.colorScheme
     when (LocalAppUiStyle.current) {
         AppUiStyle.MATERIAL3 -> {
-            AssistChip(
-                onClick = onClick,
-                enabled = enabled,
-                modifier = modifier,
-                label = {
+            if (onLongClick == null) {
+                AssistChip(
+                    onClick = onClick,
+                    enabled = enabled,
+                    modifier = modifier,
+                    label = {
+                        AppText(
+                            text = label,
+                            style = MaterialTheme.typography.labelLarge,
+                            maxLines = 1,
+                        )
+                    },
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = colorScheme.surfaceContainerHighest,
+                        labelColor = colorScheme.onSurfaceVariant,
+                    ),
+                    border = AssistChipDefaults.assistChipBorder(enabled = enabled),
+                )
+            } else {
+                Surface(
+                    modifier = modifier.combinedClickable(
+                        enabled = enabled,
+                        onClick = onClick,
+                        onLongClick = onLongClick,
+                    ),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+                    color = colorScheme.surfaceContainerHighest,
+                    contentColor = colorScheme.onSurfaceVariant,
+                    border = AssistChipDefaults.assistChipBorder(enabled = enabled),
+                ) {
                     AppText(
                         text = label,
                         style = MaterialTheme.typography.labelLarge,
                         maxLines = 1,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
                     )
-                },
-                colors = AssistChipDefaults.assistChipColors(
-                    containerColor = colorScheme.surfaceContainerHighest,
-                    labelColor = colorScheme.onSurfaceVariant,
-                ),
-                border = AssistChipDefaults.assistChipBorder(enabled = enabled),
-            )
+                }
+            }
         }
         AppUiStyle.MIUIX -> {
-            Surface(
-                onClick = onClick,
-                enabled = enabled,
-                modifier = modifier,
-                shape = AppShapes.container(ContainerLevel.Chip),
-                color = colorScheme.surfaceContainerHighest,
-                contentColor = colorScheme.onSurfaceVariant,
-            ) {
+            val chipContent: @Composable () -> Unit = {
                 AppText(
                     text = label,
                     style = MaterialTheme.typography.labelLarge,
                     maxLines = 1,
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                )
+            }
+            if (onLongClick == null) {
+                Surface(
+                    onClick = onClick,
+                    enabled = enabled,
+                    modifier = modifier,
+                    shape = AppShapes.container(ContainerLevel.Chip),
+                    color = colorScheme.surfaceContainerHighest,
+                    contentColor = colorScheme.onSurfaceVariant,
+                    content = chipContent,
+                )
+            } else {
+                Surface(
+                    modifier = modifier.combinedClickable(
+                        enabled = enabled,
+                        onClick = onClick,
+                        onLongClick = onLongClick,
+                    ),
+                    shape = AppShapes.container(ContainerLevel.Chip),
+                    color = colorScheme.surfaceContainerHighest,
+                    contentColor = colorScheme.onSurfaceVariant,
+                    content = chipContent,
                 )
             }
         }

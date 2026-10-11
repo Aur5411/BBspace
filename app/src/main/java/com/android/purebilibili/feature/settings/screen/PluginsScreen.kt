@@ -39,14 +39,6 @@ import com.android.purebilibili.core.plugin.js.resolveBiliPaiJsPluginCapabilitie
 import com.android.purebilibili.core.plugin.kotlinpkg.ExternalKotlinPluginInstallStore
 import com.android.purebilibili.core.plugin.kotlinpkg.ExternalKotlinPluginPackagePreview
 import com.android.purebilibili.core.network.NetworkModule
-import com.android.purebilibili.core.plugin.skin.UiSkinImportPackageResolver
-import com.android.purebilibili.core.plugin.skin.UiSkinImportMode
-import com.android.purebilibili.core.plugin.skin.InstalledUiSkinPackage
-import com.android.purebilibili.core.plugin.skin.UiSkinInstallStore
-import com.android.purebilibili.core.plugin.skin.UiSkinPackagePreview
-import com.android.purebilibili.core.plugin.skin.UiSkinSelection
-import com.android.purebilibili.core.plugin.skin.UiSkinSettingsStore
-import com.android.purebilibili.core.plugin.skin.rememberUiSkinState
 import com.android.purebilibili.core.plugin.PluginInfo
 import com.android.purebilibili.core.plugin.PluginManager
 import com.android.purebilibili.core.plugin.PluginStore
@@ -64,7 +56,6 @@ import com.android.purebilibili.core.theme.iOSPurple
 import com.android.purebilibili.core.theme.iOSTeal
 import com.android.purebilibili.core.theme.resolveAccessibleContainerColors
 import com.android.purebilibili.feature.settings.SettingsLocalBackHandler
-import com.android.purebilibili.feature.settings.screen.SkinCatalogScreen
 import com.android.purebilibili.feature.settings.ui.SettingsBottomBarScrollEffect
 import com.android.purebilibili.feature.settings.ui.SettingsPageScaffold
 import com.android.purebilibili.feature.settings.ui.settingsScrollContentPadding
@@ -87,8 +78,6 @@ import com.android.purebilibili.core.plugin.resolvePluginListActivityLabel
 import com.android.purebilibili.feature.plugin.EYE_PROTECTION_PLUGIN_ID
 import com.android.purebilibili.feature.plugin.EyeProtectionPlugin
 import com.android.purebilibili.feature.plugin.SPONSOR_BLOCK_PLUGIN_ID
-import com.android.purebilibili.feature.settings.buildUiSkinImagePreviewItems
-import com.android.purebilibili.feature.settings.buildUiSkinPackagePreview
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -108,27 +97,6 @@ internal suspend fun dispatchBuiltInPluginToggle(
     } else {
         onGenericPluginToggle(pluginId, enabled)
     }
-}
-
-internal fun downloadUiSkinRemotePackage(url: String): ByteArray {
-    val request = Request.Builder()
-        .url(url)
-        .header("User-Agent", "BiliPai")
-        .build()
-    NetworkModule.okHttpClient.newCall(request).execute().use { response ->
-        if (!response.isSuccessful) {
-            throw IllegalArgumentException("皮肤资源下载失败: HTTP ${response.code}")
-        }
-        return response.body.bytes()
-    }
-}
-
-internal fun resolveUiSkinImportErrorMessage(rawMessage: String?): String {
-    val message = rawMessage?.takeIf { it.isNotBlank() } ?: return "皮肤包导入失败"
-    if (message.contains("装扮存档解压后内容超过 33554432 字节")) {
-        return "装扮存档资源较大，已放宽导入限制；请重新选择该装扮包导入"
-    }
-    return message
 }
 
 internal fun downloadJsRemotePlugin(url: String): String {
@@ -172,7 +140,6 @@ fun PluginsScreen(
     //  编辑插件状态
     var editingPlugin by remember { mutableStateOf<com.android.purebilibili.core.plugin.json.JsonRulePlugin?>(null) }
     var selectedBuiltInPluginId by remember { mutableStateOf<String?>(null) }
-    var showSkinCatalog by remember { mutableStateOf(false) }
     
     //  如果正在编辑插件，显示编辑器全屏覆盖 (Mobile behavior)
     //  In Tablet, this will be handled differently.
@@ -200,15 +167,6 @@ fun PluginsScreen(
         }
     }
 
-    if (showSkinCatalog) {
-        SettingsLocalBackHandler { showSkinCatalog = false }
-        SkinCatalogScreen(
-            onBack = { showSkinCatalog = false },
-            onInstalled = { showSkinCatalog = false }
-        )
-        return
-    }
-
     val bottomContentPadding = LocalBottomBarContentPadding.current
 
     SettingsPageScaffold(
@@ -225,7 +183,6 @@ fun PluginsScreen(
             onEditJsonPlugin = { editingPlugin = it },
             initialImportUrl = initialImportUrl,
             onOpenJsPlugin = onOpenJsPlugin,
-            onOpenSkinCatalog = { showSkinCatalog = true },
         )
     }
 }
@@ -239,7 +196,6 @@ fun PluginsContent(
     onEditJsonPlugin: (com.android.purebilibili.core.plugin.json.JsonRulePlugin) -> Unit,
     initialImportUrl: String? = null,
     onOpenJsPlugin: (String) -> Unit = {},
-    onOpenSkinCatalog: () -> Unit = {}
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
@@ -312,56 +268,6 @@ fun PluginsContent(
     var jsPreview by remember { mutableStateOf<BiliPaiJsPluginPreview?>(null) }
     var isJsPreviewLoading by remember { mutableStateOf(false) }
     var isJsInstalling by remember { mutableStateOf(false) }
-    val uiSkinStore = remember(context) {
-        UiSkinInstallStore.createDefault(context)
-    }
-    val uiSkinState by rememberUiSkinState(context)
-    var installedUiSkins by remember {
-        mutableStateOf(uiSkinStore.listInstalledPackages())
-    }
-    var uiSkinPreview by remember { mutableStateOf<UiSkinPackagePreview?>(null) }
-    var uiSkinPackageBytes by remember { mutableStateOf<ByteArray?>(null) }
-    var uiSkinPreviewAssetFiles by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
-    var uiSkinImportMode by remember { mutableStateOf(UiSkinImportMode.FULL_SKIN) }
-    var uiSkinInstalledPreview by remember { mutableStateOf<InstalledUiSkinPackage?>(null) }
-    var uiSkinPendingDelete by remember { mutableStateOf<InstalledUiSkinPackage?>(null) }
-    var uiSkinImportError by remember { mutableStateOf<String?>(null) }
-    var isUiSkinPackageLoading by remember { mutableStateOf(false) }
-    val uiSkinPackagePicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
-        isUiSkinPackageLoading = true
-        uiSkinImportError = null
-        scope.launch {
-            val result = withContext(Dispatchers.IO) {
-                runCatching {
-                    val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-                        ?: throw IllegalArgumentException("无法读取皮肤包")
-                    val importPackage = UiSkinImportPackageResolver.resolve(
-                        inputBytes = bytes,
-                        remotePackageFetcher = ::downloadUiSkinRemotePackage
-                    ).getOrThrow()
-                    val preview = uiSkinStore.previewPackage(importPackage.packageBytes).getOrThrow()
-                    val previewAssetFiles = uiSkinStore.extractPreviewAssetFiles(
-                        preview = preview,
-                        packageBytes = importPackage.packageBytes
-                    ).getOrThrow()
-                    Triple(preview, importPackage.packageBytes, previewAssetFiles)
-                }
-            }
-            isUiSkinPackageLoading = false
-            result.onSuccess { (preview, bytes, previewAssetFiles) ->
-                uiSkinPreview = preview
-                uiSkinPackageBytes = bytes
-                uiSkinPreviewAssetFiles = previewAssetFiles
-                uiSkinImportMode = UiSkinImportMode.FULL_SKIN
-            }.onFailure { error ->
-                uiSkinImportError = resolveUiSkinImportErrorMessage(error.message)
-            }
-        }
-    }
-    
     //  测试对话框状态
     var testingPluginId by remember { mutableStateOf<String?>(null) }
     var testResult by remember { mutableStateOf<Triple<Int, Int, List<com.android.purebilibili.data.model.response.VideoItem>>?>(null) }
@@ -369,11 +275,9 @@ fun PluginsContent(
     val importTint = rememberAdaptivePreferenceIconContainerColor(iOSBlue)
     val jsImportTint = rememberAdaptivePreferenceIconContainerColor(iOSTeal)
     val kotlinPackageTint = rememberAdaptivePreferenceIconContainerColor(MaterialTheme.colorScheme.primary)
-    val uiSkinTint = rememberAdaptivePreferenceIconContainerColor(MaterialTheme.colorScheme.tertiary)
     val importIconContentColor = rememberAdaptivePreferenceIconContentColor(importTint)
     val jsImportIconContentColor = rememberAdaptivePreferenceIconContentColor(jsImportTint)
     val kotlinPackageIconContentColor = rememberAdaptivePreferenceIconContentColor(kotlinPackageTint)
-    val uiSkinIconContentColor = rememberAdaptivePreferenceIconContentColor(uiSkinTint)
     val kotlinPackagePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
@@ -953,187 +857,6 @@ fun PluginsContent(
                 }
             }
 
-            item {
-                Spacer(modifier = Modifier.height(12.dp))
-                AppText(
-                    text = "界面皮肤",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 32.dp, bottom = 8.dp)
-                )
-            }
-
-            item {
-                AppSurface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(AppShapes.container(ContainerLevel.Card)),
-                    color = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 1.dp
-                ) {
-                    Column {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onOpenSkinCatalog() }
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .adaptiveSquircleBackground(uiSkinTint, 10.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                AppIcon(
-                                    imageVector = com.android.purebilibili.feature.settings.rememberMaterialSymbol(com.android.purebilibili.R.drawable.ms_cloud_fill_24),
-                                    contentDescription = null,
-                                    tint = uiSkinIconContentColor,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(14.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                AppText(
-                                    text = "在线装扮目录",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                AppText(
-                                    text = "浏览 Rovniced/bilibili-skin 主题存档，真实预览后一键导入",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            AppSurface(
-                                shape = AppShapes.container(ContainerLevel.Chip),
-                                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f)
-                            ) {
-                                AppText(
-                                    text = "在线",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                )
-                            }
-                        }
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(0.5.dp)
-                                .padding(start = 16.dp)
-                                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                        )
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable(enabled = !isUiSkinPackageLoading) {
-                                    uiSkinPackagePicker.launch("*/*")
-                                }
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .adaptiveSquircleBackground(uiSkinTint, 10.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                AppIcon(
-                                    imageVector = com.android.purebilibili.feature.settings.rememberMaterialSymbol(com.android.purebilibili.R.drawable.ms_brush_fill_24),
-                                    contentDescription = null,
-                                    tint = uiSkinIconContentColor,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(14.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                AppText(
-                                    text = "导入界面皮肤包",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                AppText(
-                                    text = if (isUiSkinPackageLoading) {
-                                        "正在读取 .bpskin..."
-                                    } else {
-                                        "选择 .bpskin、主题目录 ZIP 或装扮 _package.zip，只保存资源和启用记录"
-                                    },
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            AppSurface(
-                                shape = AppShapes.container(ContainerLevel.Chip),
-                                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f)
-                            ) {
-                                AppText(
-                                    text = "资源包",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (uiSkinImportError != null) {
-                item {
-                    AppText(
-                        text = uiSkinImportError ?: "",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(horizontal = 32.dp, vertical = 8.dp)
-                    )
-                }
-            }
-
-            if (installedUiSkins.isNotEmpty()) {
-                item {
-                    AppSurface(
-                        modifier = Modifier
-                            .padding(horizontal = 16.dp, vertical = 12.dp)
-                            .clip(AppShapes.container(ContainerLevel.Card)),
-                        color = MaterialTheme.colorScheme.surface,
-                        tonalElevation = 1.dp
-                    ) {
-                        Column {
-                            installedUiSkins.forEachIndexed { index, skin ->
-                                val isActive = uiSkinState.enabled &&
-                                    uiSkinState.activeSkin?.installId == skin.installId
-                                InstalledUiSkinItem(
-                                    skin = skin,
-                                    isActive = isActive,
-                                    onToggle = { enabled ->
-                                        UiSkinSettingsStore.setSelection(
-                                            context = context,
-                                            selection = UiSkinSelection(
-                                                enabled = enabled,
-                                                selectedSkinId = if (enabled) skin.skinId else null,
-                                                selectedInstallId = if (enabled) skin.installId else null
-                                            )
-                                        )
-                                    },
-                                    onPreview = { uiSkinInstalledPreview = skin },
-                                    onDelete = { uiSkinPendingDelete = skin }
-                                )
-                                if (index < installedUiSkins.lastIndex) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(0.5.dp)
-                                            .padding(start = 16.dp)
-                                            .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            
             //  已安装的 JSON 插件列表
             if (jsonPlugins.isNotEmpty()) {
                 item {
@@ -1710,277 +1433,6 @@ fun PluginsContent(
         )
     }
 
-    uiSkinPreview?.let { preview ->
-        val previewModel = buildUiSkinPackagePreview(preview)
-        val imagePreviewItems = buildUiSkinImagePreviewItems(uiSkinPreviewAssetFiles)
-        AppAlertDialog(
-            onDismissRequest = {
-                if (!isImporting) {
-                    uiSkinPreview = null
-                    uiSkinPackageBytes = null
-                    uiSkinPreviewAssetFiles = emptyMap()
-                }
-            },
-            icon = { AppIcon(com.android.purebilibili.feature.settings.rememberMaterialSymbol(com.android.purebilibili.R.drawable.ms_brush_fill_24), contentDescription = null) },
-            title = { AppText("界面皮肤包预览") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    AppText(
-                        text = previewModel.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    AppText(
-                        text = previewModel.subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    AppText(
-                        text = previewModel.packageHashText,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    AppText(
-                        text = previewModel.assetSummaryText,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    AppText(
-                        text = previewModel.sourceText,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    AppText(
-                        text = previewModel.licenseText,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    AppText(
-                        text = "${previewModel.shareText} · ${previewModel.officialAssetText}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (preview.manifest.containsOfficialAssets) {
-                            MaterialTheme.colorScheme.error
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        }
-                    )
-                    if (preview.manifest.assets.homeProfileBackground != null ||
-                        preview.manifest.assets.homeProfileSquaredBackground != null ||
-                        preview.manifest.assets.homeProfileVideoBackground != null
-                    ) {
-                        AppText("导入方式", style = MaterialTheme.typography.labelLarge)
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            AppTextButton(onClick = { uiSkinImportMode = UiSkinImportMode.FULL_SKIN }) {
-                                AppText(if (uiSkinImportMode == UiSkinImportMode.FULL_SKIN) "✓ 完整皮肤" else "完整皮肤")
-                            }
-                            AppTextButton(onClick = {
-                                uiSkinImportMode = UiSkinImportMode.PERSONAL_BACKGROUND_ONLY
-                            }) {
-                                AppText(
-                                    if (uiSkinImportMode == UiSkinImportMode.PERSONAL_BACKGROUND_ONLY) {
-                                        "✓ 仅个人背景"
-                                    } else {
-                                        "仅个人背景"
-                                    }
-                                )
-                            }
-                        }
-                    }
-                    UiSkinImagePreviewGrid(items = imagePreviewItems)
-                    AppText(
-                        text = "宿主只保存资源和启用记录，不执行代码；可替换首页皮肤图标和装饰层，不替换底栏液态玻璃链路。",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            },
-            confirmButton = {
-                AppTextButton(
-                    onClick = {
-                        val bytes = uiSkinPackageBytes ?: return@AppTextButton
-                        val result = runCatching {
-                            val packageToInstall = when (uiSkinImportMode) {
-                                UiSkinImportMode.FULL_SKIN -> bytes
-                                UiSkinImportMode.PERSONAL_BACKGROUND_ONLY ->
-                                    UiSkinImportPackageResolver.restrictToPersonalBackground(bytes).getOrThrow()
-                            }
-                            val installPreview = uiSkinStore.previewPackage(packageToInstall).getOrThrow()
-                            uiSkinStore.installPreview(installPreview, packageToInstall).getOrThrow()
-                        }
-                        result.onSuccess { installed ->
-                            installedUiSkins = uiSkinStore.listInstalledPackages()
-                            UiSkinSettingsStore.setSelection(
-                                context = context,
-                                selection = UiSkinSelection(
-                                    enabled = true,
-                                    selectedSkinId = installed.skinId,
-                                    selectedInstallId = installed.installId
-                                )
-                            )
-                            uiSkinPreview = null
-                            uiSkinPackageBytes = null
-                            uiSkinPreviewAssetFiles = emptyMap()
-                            android.widget.Toast.makeText(
-                                context,
-                                "皮肤包已保存并启用",
-                                android.widget.Toast.LENGTH_SHORT
-                            ).show()
-                        }.onFailure { error ->
-                            uiSkinImportError = error.message ?: "皮肤包导入失败"
-                            uiSkinPreview = null
-                            uiSkinPackageBytes = null
-                            uiSkinPreviewAssetFiles = emptyMap()
-                        }
-                    }
-                ) {
-                    AppText("保存并启用")
-                }
-            },
-            dismissButton = {
-                AppTextButton(
-                    onClick = {
-                        uiSkinPreview = null
-                        uiSkinPackageBytes = null
-                        uiSkinPreviewAssetFiles = emptyMap()
-                    }
-                ) {
-                    AppText("取消")
-                }
-            }
-        )
-    }
-
-    uiSkinInstalledPreview?.let { installed ->
-        val isActive = uiSkinState.enabled && uiSkinState.activeSkin?.installId == installed.installId
-        val previewModel = buildInstalledUiSkinPreview(
-            installed = installed,
-            isActive = isActive
-        )
-        val imagePreviewItems = buildUiSkinImagePreviewItems(installed.assetFiles)
-        AppAlertDialog(
-            onDismissRequest = { uiSkinInstalledPreview = null },
-            icon = { AppIcon(com.android.purebilibili.feature.settings.rememberMaterialSymbol(com.android.purebilibili.R.drawable.ms_visibility_24), contentDescription = null) },
-            title = { AppText("皮肤预览") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    AppText(
-                        text = previewModel.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    AppText(
-                        text = previewModel.subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    AppText(
-                        text = previewModel.packageHashText,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    AppText(
-                        text = previewModel.assetSummaryText,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    AppText(
-                        text = previewModel.sourceText,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    AppText(
-                        text = previewModel.licenseText,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    AppText(
-                        text = "${previewModel.shareText} · ${previewModel.officialAssetText}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (installed.manifest.containsOfficialAssets) {
-                            MaterialTheme.colorScheme.error
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        }
-                    )
-                    UiSkinImagePreviewGrid(items = imagePreviewItems)
-                }
-            },
-            confirmButton = {
-                AppTextButton(
-                    onClick = {
-                        UiSkinSettingsStore.setSelection(
-                            context = context,
-                            selection = UiSkinSelection(
-                                enabled = true,
-                                selectedSkinId = installed.skinId,
-                                selectedInstallId = installed.installId
-                            )
-                        )
-                        uiSkinInstalledPreview = null
-                        android.widget.Toast.makeText(
-                            context,
-                            "已启用皮肤预览",
-                            android.widget.Toast.LENGTH_SHORT
-                        ).show()
-                    },
-                    enabled = !isActive
-                ) {
-                    AppText(if (isActive) "已启用" else "启用预览")
-                }
-            },
-            dismissButton = {
-                AppTextButton(onClick = { uiSkinInstalledPreview = null }) {
-                    AppText("关闭")
-                }
-            }
-        )
-    }
-
-    uiSkinPendingDelete?.let { skin ->
-        AppAlertDialog(
-            onDismissRequest = { uiSkinPendingDelete = null },
-            icon = { AppIcon(com.android.purebilibili.feature.settings.rememberMaterialSymbol(com.android.purebilibili.R.drawable.ms_delete_24), contentDescription = null) },
-            title = { AppText("删除皮肤") },
-            text = { AppText("确定要删除皮肤 \"${skin.displayName}\" 吗？删除后会清理本地包和已解压资源。") },
-            confirmButton = {
-                AppTextButton(
-                    onClick = {
-                        val wasActive = uiSkinState.enabled &&
-                            uiSkinState.activeSkin?.installId == skin.installId
-                        val result = uiSkinStore.deleteInstalledPackage(skin.installId)
-                        result.onSuccess { deleted ->
-                            if (deleted) {
-                                installedUiSkins = uiSkinStore.listInstalledPackages()
-                                if (wasActive) {
-                                    UiSkinSettingsStore.setSelection(
-                                        context = context,
-                                        selection = UiSkinSelection()
-                                    )
-                                }
-                                android.widget.Toast.makeText(
-                                    context,
-                                    "皮肤已删除",
-                                    android.widget.Toast.LENGTH_SHORT
-                                ).show()
-                            }
-                            uiSkinPendingDelete = null
-                        }.onFailure { error ->
-                            uiSkinPendingDelete = null
-                            uiSkinImportError = error.message ?: "皮肤删除失败"
-                        }
-                    }
-                ) {
-                    AppText("删除", color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                AppTextButton(onClick = { uiSkinPendingDelete = null }) {
-                    AppText("取消")
-                }
-            }
-        )
-    }
-    
     //  测试结果对话框
     testingPluginId?.let { pluginId ->
         testResult?.let { (original, filtered, blockedVideos) ->
@@ -1995,136 +1447,6 @@ fun PluginsContent(
                     testResult = null
                 }
             )
-        }
-    }
-}
-
-@Composable
-private fun UiSkinImagePreviewGrid(
-    items: List<com.android.purebilibili.feature.settings.UiSkinImagePreviewItem>
-) {
-    if (items.isEmpty()) {
-        AppText(
-            text = "图片预览：未找到可展示资源",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        return
-    }
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        items.take(6).forEach { item ->
-            Column(
-                modifier = Modifier.width(88.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                if (item.isVideo) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp)
-                            .clip(AppShapes.container(ContainerLevel.Chip))
-                            .background(MaterialTheme.colorScheme.surfaceVariant),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        AppIcon(
-                            imageVector = com.android.purebilibili.feature.settings.rememberMaterialSymbol(com.android.purebilibili.R.drawable.ms_play_circle_24),
-                            contentDescription = item.label,
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-                } else {
-                    AsyncImage(
-                        model = item.localPath,
-                        contentDescription = item.label,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp)
-                            .clip(AppShapes.container(ContainerLevel.Chip))
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                    )
-                }
-                AppText(
-                    text = item.label,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun InstalledUiSkinItem(
-    skin: InstalledUiSkinPackage,
-    isActive: Boolean,
-    onToggle: (Boolean) -> Unit,
-    onPreview: () -> Unit,
-    onDelete: () -> Unit
-) {
-    val previewModel = remember(skin, isActive) {
-        buildInstalledUiSkinPreview(
-            installed = skin,
-            isActive = isActive
-        )
-    }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            AppText(
-                text = skin.displayName,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            AppText(
-                text = buildInstalledUiSkinSubtitle(skin.manifest),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                lineHeight = 18.sp,
-                maxLines = 2
-            )
-        }
-        Column(
-            horizontalAlignment = Alignment.End,
-            verticalArrangement = Arrangement.spacedBy(2.dp)
-        ) {
-            AppAdaptiveSwitch(
-                checked = isActive,
-                onCheckedChange = onToggle
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                AppIconButton(onClick = onPreview) {
-                    AppIcon(
-                        imageVector = com.android.purebilibili.feature.settings.rememberMaterialSymbol(com.android.purebilibili.R.drawable.ms_visibility_24),
-                        contentDescription = "预览皮肤",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-                AppIconButton(
-                    onClick = onDelete,
-                    enabled = previewModel.canDelete
-                ) {
-                    AppIcon(
-                        imageVector = com.android.purebilibili.feature.settings.rememberMaterialSymbol(com.android.purebilibili.R.drawable.ms_delete_24),
-                        contentDescription = "删除皮肤",
-                        tint = if (previewModel.canDelete) {
-                            MaterialTheme.colorScheme.error
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                        },
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-            }
         }
     }
 }

@@ -15,7 +15,8 @@ import com.android.purebilibili.core.plugin.RecommendationRequest
 import com.android.purebilibili.core.plugin.RecommendationResult
 import com.android.purebilibili.core.plugin.RecommendationSceneSignals
 import com.android.purebilibili.core.plugin.RecommendationStrategy
-import com.android.purebilibili.feature.plugin.ADFILTER_PLUGIN_ID
+import com.android.purebilibili.feature.plugin.HoyoFairyBlockPlugin
+import com.android.purebilibili.feature.plugin.HoyoFairyBlockConfig
 import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.store.TodayWatchDislikedVideoSnapshot
 import com.android.purebilibili.core.store.TodayWatchFeedbackStore
@@ -54,6 +55,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.channels.Channel
 import kotlinx.collections.immutable.toImmutableList
@@ -93,7 +95,7 @@ private data class PreparedHomeFeedVideos(
     val filteredVideos: List<VideoItem>,
 )
 
-private fun prepareHomeFeedVideos(
+private suspend fun prepareHomeFeedVideos(
     videos: List<VideoItem>,
     blockedMids: Set<Long>,
     feedKind: FeedKind,
@@ -102,6 +104,9 @@ private fun prepareHomeFeedVideos(
     val validVideos = videos.filter { it.bvid.isNotEmpty() && it.title.isNotEmpty() }
     val blockedFiltered = validVideos.filter { video -> video.owner.mid !in blockedMids }
     val feedbackFiltered = feedbackFilter(blockedFiltered)
+    // 「屏蔽净化」按标签过滤需要真实标签（信息流接口不含标签）：先补齐再过滤。
+    // 未开启按标签精确过滤、或没配关键词时是空操作，不产生网络请求。
+    com.android.purebilibili.feature.plugin.prefetchHoyoFairyTags(feedbackFiltered)
     val builtinFiltered = PluginManager.filterFeedItems(feedbackFiltered, feedKind = feedKind)
     val filteredVideos = com.android.purebilibili.core.plugin.json.JsonPluginManager
         .filterVideos(builtinFiltered)
@@ -202,6 +207,12 @@ internal fun applyHomeRefreshUndoSnapshot(
 
 private const val HISTORY_SAMPLE_CACHE_TTL_MS = 10 * 60 * 1000L
 private const val HOME_REFRESH_UNDO_TIMEOUT_MS = 5_000L
+
+/**
+ * 首屏等待「屏蔽净化」插件恢复配置的最长时间。
+ * 插件在 Application 启动时注册，通常远小于此值；超时则先出数据，再由内存兜底重过滤。
+ */
+private const val BLOCK_PLUGIN_READY_TIMEOUT_MS = 3_000L
 
 private fun TodayWatchPluginMode.toUiMode(): TodayWatchMode {
     return when (this) {
@@ -379,6 +390,11 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     private var todayWatchPluginObserverJob: Job? = null
     private var observedTodayWatchPlugin: TodayWatchPlugin? = null
 
+    // 「屏蔽净化」配置监听：屏蔽词一变就对已加载内容重过滤，避免主页残留命中项
+    private var hoyoFairyObserverJob: Job? = null
+    private var observedHoyoFairyPlugin: HoyoFairyBlockPlugin? = null
+    private var lastAppliedHoyoFairyConfig: HoyoFairyBlockConfig? = null
+
     init {
         viewModelScope.launch {
             SettingsManager.getIncrementalTimelineRefresh(getApplication()).collect { enabled ->
@@ -405,8 +421,33 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         }
         syncTodayWatchFeedbackFromStore()
         viewModelScope.launch {
-            PluginManager.awaitPluginReady(ADFILTER_PLUGIN_ID)
+            // 首屏已改为「等插件就绪再拉」（见 loadData），这里只做内存兜底：
+            // 若首屏是在超时后才拿到数据（插件仍未就绪），插件就绪后立刻在内存里重过滤一次，
+            // 不发第二次网络请求。
+            PluginManager.awaitPluginReady(HoyoFairyBlockPlugin.PLUGIN_ID)
             reFilterAllContent()
+        }
+        viewModelScope.launch {
+            // 屏蔽词/规则一变就重过滤：否则刚加入的屏蔽词不会作用到已经加载出来的卡片上
+            PluginManager.pluginsFlow.collect { plugins ->
+                val plugin = plugins
+                    .find { it.plugin.id == HoyoFairyBlockPlugin.PLUGIN_ID }
+                    ?.plugin as? HoyoFairyBlockPlugin
+                if (plugin !== observedHoyoFairyPlugin) {
+                    hoyoFairyObserverJob?.cancel()
+                    observedHoyoFairyPlugin = plugin
+                    hoyoFairyObserverJob = plugin?.let { target ->
+                        viewModelScope.launch {
+                            target.configState.collect { config ->
+                                if (config != lastAppliedHoyoFairyConfig) {
+                                    lastAppliedHoyoFairyConfig = config
+                                    reFilterAllContent()
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
         viewModelScope.launch {
             PluginManager.pluginsFlow.collect { plugins ->
@@ -1176,6 +1217,13 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         categoryInitialLoadJob?.cancel()
         val category = _uiState.value.currentCategory
         categoryInitialLoadJob = viewModelScope.launch {
+            // [开屏拦截] 先等「屏蔽净化」插件把已保存的屏蔽词恢复完，再拉首屏数据。
+            // 这样第一屏提交的就是过滤后的结果，不会先闪一下未过滤内容再刷新。
+            // 插件在 Application 启动时注册，通常几十毫秒内就绪；加超时兜底，
+            // 万一插件异常也不会让首页永远加载不出来。
+            withTimeoutOrNull(BLOCK_PLUGIN_READY_TIMEOUT_MS) {
+                PluginManager.awaitPluginReady(HoyoFairyBlockPlugin.PLUGIN_ID)
+            }
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
                 fetchData(isLoadMore = false, category = category)
