@@ -40,6 +40,12 @@ data class OpenSourceLibrary(
  */
 val openSourceLibraries = listOf(
     OpenSourceLibrary(
+        name = "biliHoyoFairy",
+        license = "MIT",
+        url = "https://github.com/gendu-amd/biliHoyoFairy",
+        description = "「屏蔽净化」插件的移植来源：B 站推荐流多维屏蔽规则、匹配与归一化逻辑"
+    ),
+    OpenSourceLibrary(
         name = "Kotlin",
         license = "Apache 2.0",
         url = "https://github.com/JetBrains/kotlin",
