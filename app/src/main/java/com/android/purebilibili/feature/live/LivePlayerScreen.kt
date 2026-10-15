@@ -195,7 +195,13 @@ fun LivePlayerScreen(
     var showStreamSourceSheet by remember { mutableStateOf(false) }
     var showPortraitMoreSheet by remember(roomId, siteId) { mutableStateOf(false) }
     var showPortraitInteractionSheet by remember(roomId, siteId) { mutableStateOf(false) }
+    // ★ 2026-10: 投票面板入口(右上角设置菜单), 直播间主界面不再常驻聊天/SC/投票
+    var showLiveVoteSheet by remember(roomId, siteId) { mutableStateOf(false) }
     var isPortraitClearScreen by rememberSaveable(roomId, siteId) { mutableStateOf(false) }
+    // ★ 2026-10: 直播间主体 = 直播画面 + 滚动弹幕。
+    //   画面下方保留**弹幕区域**(实时弹幕流, 只显示普通弹幕);
+    //   醒目留言(SC)不进弹幕列表, 改由顶部悬浮条展示;
+    //   投票收进右上角设置菜单。
     var isPortraitChatVisible by rememberSaveable(roomId, siteId) { mutableStateOf(true) }
     var reportTarget by remember { mutableStateOf<LiveDanmakuItem?>(null) }
     var isFullscreen by rememberSaveable { mutableStateOf(false) }
@@ -286,7 +292,8 @@ fun LivePlayerScreen(
         portraitChatMessages.clear()
         portraitDanmakuSequence = 0L
         viewModel.danmakuFlow.collect { item ->
-            if (shouldRenderLiveDanmaku(item.text, item.emoticonUrl)) {
+            // ★ SC 不进下方弹幕列表(醒目留言改由顶部悬浮条统一展示), 避免两处重复
+            if (!item.isSuperChat && shouldRenderLiveDanmaku(item.text, item.emoticonUrl)) {
                 portraitChatMessages.add(item)
                 if (portraitChatMessages.size > 200) portraitChatMessages.removeAt(0)
                 portraitDanmakuSequence++
@@ -342,10 +349,11 @@ fun LivePlayerScreen(
     val showChatToggle = remember(liveLayoutMode) {
         shouldShowLiveChatToggle(liveLayoutMode)
     }
-    val showSplitChatPanel = remember(liveLayoutMode) {
+    // ★ 2026-10: 横屏分栏聊天面板默认隐藏, 改由右上角设置菜单按需唤起
+    val showSplitChatPanel = remember(liveLayoutMode, isInteractionPanelVisible) {
         shouldShowLiveSplitChatPanel(
             layoutMode = liveLayoutMode,
-            isInteractionPanelVisible = true
+            isInteractionPanelVisible = isInteractionPanelVisible
         )
     }
     val splitChatPanelWidthDp = remember(configuration.screenWidthDp) {
@@ -1119,6 +1127,7 @@ fun LivePlayerScreen(
                         onOpenRank = { showContributionRankSheet = true },
                         onOpenSend = { showSendDanmakuSheet = true },
                         onOpenBlock = { showBlockDialog = true },
+                        onOpenVote = { showLiveVoteSheet = true },
                         redPocketInfo = successState?.redPocketInfo,
                         onRedPocketClick = {
                             successState?.redPocketInfo?.let { openRedPocket(it) }
@@ -1266,6 +1275,7 @@ fun LivePlayerScreen(
                         onOpenRank = { showContributionRankSheet = true },
                         onOpenSend = { showSendDanmakuSheet = true },
                         onOpenBlock = { showBlockDialog = true },
+                        onOpenVote = { showLiveVoteSheet = true },
                         redPocketInfo = successState?.redPocketInfo,
                         onRedPocketClick = {
                             successState?.redPocketInfo?.let { openRedPocket(it) }
@@ -1284,15 +1294,24 @@ fun LivePlayerScreen(
                             ),
                         verticalArrangement = Arrangement.spacedBy(AppSpacingTokens.Small),
                     ) {
+                        // ★ SC 悬浮条: 贴在「下方弹幕区域」的顶部 —— 有 SC 时挂在弹幕列表上方,
+                        //   只显示最贵 + 最新两条, 新的从顶部滑入替换, 倒计时结束自动消失。
+                        LiveSuperChatFlashOverlay(
+                            flashFlow = viewModel.superChatFlashFlow,
+                            onUserClick = onUserClick,
+                            // 高度上限 = 弹幕区域高度的一半: 放得下就上下两条, 放不下只留一条
+                            maxHeightDp = portraitOverlayPanelHeightDp / 2,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = AppSpacingTokens.Small),
+                        )
                         if (portraitPresentation.showChatPreview) {
                             LivePortraitChatStream(
                                 messages = portraitChatMessages,
                                 danmakuSequence = portraitDanmakuSequence,
-                                superChatCount = superChatItems.size,
-                                onOpenSuperChat = {
-                                    selectedInteractionTab = 1
-                                    showPortraitInteractionSheet = true
-                                },
+                                // SC 改由顶部悬浮条展示, 弹幕区不再提供「SC(n) >」入口
+                                superChatCount = 0,
+                                onOpenSuperChat = null,
                                 onUserClick = onUserClick,
                                 onAtUser = { item ->
                                     viewModel.setReplyTarget(item)
@@ -1382,20 +1401,33 @@ fun LivePlayerScreen(
                         onOpenRank = { showContributionRankSheet = true },
                         onOpenSend = { showSendDanmakuSheet = true },
                         onOpenBlock = { showBlockDialog = true },
+                        onOpenVote = { showLiveVoteSheet = true },
                         redPocketInfo = successState?.redPocketInfo,
                         onRedPocketClick = {
                             successState?.redPocketInfo?.let { openRedPocket(it) }
                         }
                     )
-                    Box(modifier = Modifier.fillMaxWidth().aspectRatio(16f/9f)) {
-                        playerContent()
-                    }
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth()
-                    ) {
-                        interactionContent(shouldUseLiveChatMediaOverlay(liveLayoutMode))
+                    // ★ 2026-10: 互动面板(聊天/SC/投票)默认隐藏 -> 直播画面占满;
+                    //   需要时从右上角设置菜单唤起, 此时恢复「16:9 画面 + 下方互动区」。
+                    if (isInteractionPanelVisible) {
+                        Box(modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f)) {
+                            playerContent()
+                        }
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                        ) {
+                            interactionContent(shouldUseLiveChatMediaOverlay(liveLayoutMode))
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                        ) {
+                            playerContent()
+                        }
                     }
                 }
             }
@@ -1404,18 +1436,8 @@ fun LivePlayerScreen(
 
     // SC 左下角非侵入式悬浮卡片（不遮挡中央视频画面，仅响应实时新 SC，带倒计时与独立关闭）
     // 跟随弹幕开关显示，并可在弹幕设置中独立关闭
-    if (shouldShowLiveSuperChatFlash(
-            showMediaOverlays = portraitPresentation.showMediaOverlays,
-            isDanmakuEnabled = successState?.isDanmakuEnabled == true,
-            flashEnabled = liveSuperChatFlashEnabled
-        )
-    ) {
-        LiveSuperChatFlashOverlay(
-            flashFlow = viewModel.superChatFlashFlow,
-            onUserClick = onUserClick,
-            modifier = Modifier.fillMaxSize()
-        )
-    }
+    // ★ 2026-10: SC 悬浮条已移入竖屏「下方弹幕区域」顶部 (见 PortraitVerticalOverlay 分支),
+    //   不再作为全屏浮层渲染, 避免与弹幕区内的实例重复显示。
     }
 
     if (portraitPresentation.showChrome && showPortraitMoreSheet) {
@@ -1461,6 +1483,19 @@ fun LivePlayerScreen(
                 add(AppWindowAction("截图", onClick = { captureLiveScreenshot() }))
             },
         )
+    }
+
+    // ★ 投票面板: 直播间主界面不常驻, 仅从右上角设置菜单按需打开
+    if (showLiveVoteSheet) {
+        AppModalBottomSheet(onDismissRequest = { showLiveVoteSheet = false }) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height((configuration.screenHeightDp * 0.58f).dp)
+            ) {
+                LiveVotePanel(voteSnapshot, Modifier.fillMaxSize())
+            }
+        }
     }
 
     if (portraitPresentation.showChrome && showPortraitInteractionSheet) {
@@ -1747,6 +1782,8 @@ private fun LivePortraitOverlayAppBar(
     onOpenRank: () -> Unit,
     onOpenSend: () -> Unit,
     onOpenBlock: () -> Unit,
+    // ★ 2026-10: 聊天 / SC / 投票 面板入口(右上角设置菜单内)
+    onOpenVote: () -> Unit,
     redPocketInfo: LiveRedPocketInfo?,
     onRedPocketClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -1934,6 +1971,10 @@ private fun LivePortraitOverlayAppBar(
                         onClick = onOpenRank,
                     ),
                     AppWindowAction(
+                        label = "投票",
+                        onClick = onOpenVote,
+                    ),
+                    AppWindowAction(
                         label = "发弹幕",
                         onClick = onOpenSend,
                     ),
@@ -2078,7 +2119,9 @@ private fun LivePrimaryInteractionPanel(
     val segmentedSpec = remember(playerChromeProfile.compactChromeSpec) {
         resolveLiveInteractionSegmentedControlSpec(playerChromeProfile.compactChromeSpec)
     }
-    val tabs = remember { listOf("聊天", "SC", "投票") }
+    // ★ 2026-10: 只保留「聊天」(即弹幕/聊天流); SC 已走顶部悬浮条、投票已进右上角菜单,
+    //   这里不再提供 SC / 投票两个页签。
+    val tabs = remember { listOf("聊天") }
     val pagerState = rememberPagerState(pageCount = { tabs.size })
     val selectionBackdrop = rememberLayerBackdrop()
 

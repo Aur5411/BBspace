@@ -112,7 +112,10 @@ fun shouldShowLiveChatToggle(
         layoutMode == LiveRoomLayoutMode.LandscapeOverlay
 }
 
-fun defaultLiveInteractionPanelVisible(): Boolean = false
+// ★ 2026-10: 互动面板默认显示 —— 它的 chat 页签就是直播间的「弹幕/聊天流」。
+//   之前误把它整体隐藏, 导致用户看不到弹幕; 现在恢复默认可见, 弹幕随之回来。
+//   (SC 已改顶部悬浮条、投票已收进右上角菜单, 不在此重复)
+fun defaultLiveInteractionPanelVisible(): Boolean = true
 
 fun shouldShowLiveSplitChatPanel(
     layoutMode: LiveRoomLayoutMode,

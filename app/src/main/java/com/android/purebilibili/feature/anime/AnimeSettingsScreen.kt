@@ -220,6 +220,13 @@ fun AnimeSettingsScreen(
                     onCheckedChange = { v -> persist { it.copy(showReviews = v) } },
                 )
                 AppPreferenceDivider()
+                AppSwitchPreference(
+                    title = "播放页显示本集吐槽",
+                    subtitle = "播放页展示当前这一集的 Bangumi 吐槽（含图片与回复）",
+                    checked = settings.showEpisodeComments,
+                    onCheckedChange = { v -> persist { it.copy(showEpisodeComments = v) } },
+                )
+                AppPreferenceDivider()
                 AppSliderPreference(
                     title = "搜索结果数量",
                     subtitle = "每次搜索向 animeko 请求的条目上限",

@@ -65,6 +65,7 @@ import com.android.purebilibili.core.ui.components.AppSearchFieldPresentation
 import com.android.purebilibili.core.ui.components.AppSegmentOption
 import com.android.purebilibili.core.ui.rememberAppBackIcon
 import com.android.purebilibili.core.ui.rememberAppSearchIcon
+import com.android.purebilibili.core.ui.rememberAppRefreshIcon
 import com.android.purebilibili.core.util.responsiveContentWidth
 import com.android.purebilibili.feature.download.DownloadManager
 import kotlinx.coroutines.launch
@@ -205,6 +206,13 @@ fun BangumiScreen(
                                 }
                             },
                             actions = {
+                                // ★ 2026-10: 重置搜索 —— 一键把番剧页恢复到初始 HOME 态,
+                                //   避免搜索后页面一直停在搜索结果、只能重启才能恢复。
+                                AppIconButton(
+                                    onClick = viewModel::resetToHome,
+                                ) {
+                                    AppIcon(rememberAppRefreshIcon(), contentDescription = "重置")
+                                }
                                 AppIconButton(
                                     onClick = viewModel::openSearch,
                                     enabled = !selectionActive,

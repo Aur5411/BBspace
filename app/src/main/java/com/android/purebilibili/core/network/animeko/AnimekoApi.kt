@@ -138,6 +138,20 @@ interface AnimekoApi {
     suspend fun danmaku(
         @Path("episodeId") episodeId: Long,
     ): com.android.purebilibili.data.model.animeko.AniDanmaku
+
+    /**
+     * ★ 2026-10: 单集吐槽(Bangumi 吐槽箱聚合)。
+     *
+     * 服务端聚合了 Bangumi 站内单集吐槽与 animeko 站内评论,
+     * 免登录即可读。返回结构含作者/正文(BBCode)/图片/楼中楼回复/来源。
+     * 播放页只做「看」, 不做点赞/发表/回复等交互。
+     */
+    @GET("v2/episodes/{episodeId}/comments")
+    suspend fun episodeComments(
+        @Path("episodeId") episodeId: Long,
+        @Query("limit") limit: Int = 20,
+        @Query("offset") offset: Int = 0,
+    ): com.android.purebilibili.data.model.animeko.AniEpisodeCommentPage
 }
 
 /**

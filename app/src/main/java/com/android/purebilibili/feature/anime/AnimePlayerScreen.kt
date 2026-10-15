@@ -135,6 +135,8 @@ fun AnimePlayerScreen(
     val colorScheme = MaterialTheme.colorScheme
     val detailState by viewModel.detailState.collectAsStateWithLifecycle()
     val sourceState by viewModel.sourceState.collectAsStateWithLifecycle()
+    // ★ 2026-10: 本集吐槽(Bangumi 单集吐槽箱)状态
+    val episodeCommentsState by viewModel.episodeComments.collectAsStateWithLifecycle()
 
     // ★ 番剧自有设置（实时订阅，改完立即生效，且只影响本页）
     val aniSettings = rememberAniSettingsState()
@@ -486,6 +488,16 @@ fun AnimePlayerScreen(
         viewModel.onEpisodeChangedForDownloadSources(query, panelVisible = showMagnetSheet)
     }
 
+    // ★ 2026-10: 拉取「本集吐槽」(Bangumi 单集吐槽箱) —— 随换集自动刷新。
+    //   条数与详情页短评一致(BGM_EP_COMMENT_PAGE_SIZE), 由 ViewModel 控制去重。
+    LaunchedEffect(subjectId, currentEpisodeId, detail) {
+        val d = detail ?: return@LaunchedEffect
+        val ep = d.episodes.firstOrNull { it.episodeId == currentEpisodeId }
+            ?: d.episodes.firstOrNull { it.isMain }
+            ?: return@LaunchedEffect
+        viewModel.loadEpisodeComments(ep.episodeId)
+    }
+
     // 优先源没搜到时回退全量检索(只回退一次, 避免循环)
     LaunchedEffect(sourceState) {
         val st = sourceState
@@ -517,8 +529,11 @@ fun AnimePlayerScreen(
         if (st is AniSourceState.Success) {
             val playable = st.result.candidates.filter { it.playableDirectly }
             failoverCandidates.value = playable
-            failoverIndex.intValue = 0
+            // ★ 2026-10: 检索改为流式后 sourceState 会被多次更新(每来一个源更新一次)。
+            //   只在「尚未起播」时重置换源索引并挑第一条开播 —— 首个可播候选到达即开播,
+            //   后续补充进来的源只更新队列, 不打断正在进行的播放/换源。
             if (currentUrl == null) {
+                failoverIndex.intValue = 0
                 // ★ v4.1.0: 已下载的集数**默认播本地缓存** —— local_cache 候选
                 //   在 loadMediaSources 里已插到最前, 这里再显式优先一次,
                 //   避免任何排序变化导致在线源抢在缓存前面。
@@ -902,10 +917,18 @@ fun AnimePlayerScreen(
             // ---- 播放信息 / 换源入口 (全屏时隐藏) ----
             if (!isFullscreen) {
                 AppSurface(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        // ★ 2026-10: 占满播放器下方剩余空间, 让底部信息区(选集/吐槽)可滚动
+                        .weight(1f),
                     color = colorScheme.background,
                 ) {
-                    Column(modifier = Modifier.padding(AppSpacingTokens.Medium)) {
+                    Column(
+                        modifier = Modifier
+                            .padding(AppSpacingTokens.Medium)
+                            // ★ 2026-10: 底部信息区可上下滚动, 否则吐槽/选集多了会被截断
+                            .verticalScroll(rememberScrollState())
+                    ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
@@ -999,6 +1022,22 @@ fun AnimePlayerScreen(
                                     )
                                 }
                             }
+                        }
+
+                        // ★ 2026-10: 本集吐槽(Bangumi 单集吐槽箱, 含图片与楼中楼回复)。
+                        //   仅当番剧设置里开启时渲染; 随换集自动刷新。
+                        if (aniSettings.showEpisodeComments) {
+                            Spacer(Modifier.height(AppSpacingTokens.Large))
+                            BangumiEpisodeCommentSection(
+                                state = episodeCommentsState,
+                                onRetry = {
+                                    detail?.episodes
+                                        ?.firstOrNull { it.episodeId == currentEpisodeId }
+                                        ?.let { ep ->
+                                            viewModel.retryEpisodeComments(ep.episodeId)
+                                        }
+                                },
+                            )
                         }
                     }
                 }

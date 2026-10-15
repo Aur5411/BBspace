@@ -477,6 +477,24 @@ class BangumiHubViewModel : ViewModel() {
         }
     }
 
+    /**
+     * ★ 2026-10: 一键「重置搜索」—— 把番剧页恢复到最初的 HOME 态。
+     *
+     * 场景: 用户搜索番剧后, 页面一直停在搜索结果, 之前只能重启 App 才能恢复。
+     * 这里清空搜索词与结果、退出搜索页, 回到首页并确保首页内容已加载。
+     */
+    fun resetToHome() {
+        searchJob?.cancel()
+        _uiState.update {
+            it.copy(
+                page = BangumiHubPage.HOME,
+                pageBeforeSearch = BangumiHubPage.HOME,
+                search = BangumiSearchHubState(),
+            )
+        }
+        ensureHomeLoaded(_uiState.value.channel)
+    }
+
     private fun ensureHomeLoaded(channel: BangumiChannel) {
         val home = homeState(channel)
         if (home.recommendations.page == 0 && !home.recommendations.isLoading) refreshHome(channel)

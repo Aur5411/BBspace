@@ -178,4 +178,82 @@ object AniSourcePreference {
 
     private fun elapsedMillis(startedNanos: Long): Long =
         ((System.nanoTime() - startedNanos) / 1_000_000L).coerceAtLeast(1L)
+
+    // ---------------------------------------------------------------
+    // ★ 2026-10 新增: 用「番剧名」逐个源做搜索测试
+    // ---------------------------------------------------------------
+
+    /**
+     * 按番剧名逐个源实测「能不能搜到」。
+     *
+     * - maccms 采集源：请求 `ac=detail&wd=<番剧名>`，看是否返回含 m3u8 的播放串；
+     * - 网页源：请求搜索页，看是否 200 且命中关键词；
+     * - BT 源：跳过（需要 RSS 解析，不在这里测）。
+     *
+     * @param onResult 每测完一个源立即回调 (sourceId, 结果文案)，流式上屏
+     */
+    suspend fun probeSearch(
+        context: Context,
+        keyword: String,
+        onResult: ((String, String) -> Unit)? = null,
+    ): Map<String, String> = coroutineScope {
+        val kw = keyword.trim()
+        if (kw.isEmpty()) return@coroutineScope emptyMap()
+        allSources().map { source ->
+            async(Dispatchers.IO) {
+                val text = probeSearchOne(source, kw)
+                onResult?.invoke(source.id, text)
+                source.id to text
+            }
+        }.awaitAll().toMap(linkedMapOf())
+    }
+
+    private fun probeSearchOne(source: AniSourceEntry, keyword: String): String = try {
+        when {
+            source.id.startsWith("online_") -> {
+                val base = AniOnlineCatalog.byId[source.id]?.baseUrl ?: source.testUrl
+                val body = httpGetString(AniOnlineCatalog.detailUrl(base, keyword), base + "/")
+                    ?: return "请求失败"
+                val items = Regex("\"vod_play_url\"").findAll(body).count()
+                when {
+                    items <= 0 -> "无结果"
+                    body.contains("m3u8", ignoreCase = true) -> "命中 $items 条"
+                    else -> "有结果但无 m3u8"
+                }
+            }
+
+            source.id.startsWith("web_") -> {
+                val cfg = AniWebSourceCatalog.byId[source.id] ?: return "配置缺失"
+                val url = cfg.searchUrl.replace("{keyword}", urlEncode(keyword))
+                val body = httpGetString(url, cfg.homepage) ?: return "请求失败"
+                if (body.contains(keyword) || body.contains("m3u8", ignoreCase = true)) {
+                    "搜索页命中"
+                } else {
+                    "无结果"
+                }
+            }
+
+            else -> "跳过(BT)"
+        }
+    } catch (e: Exception) {
+        "错误:${e.javaClass.simpleName}"
+    }
+
+    private fun httpGetString(url: String, referer: String): String? = runCatching {
+        val request = Request.Builder()
+            .url(url)
+            .header("User-Agent", PROBE_UA)
+            .header("Referer", referer)
+            .build()
+        probeClient.newBuilder()
+            .callTimeout(8, TimeUnit.SECONDS)
+            .readTimeout(8, TimeUnit.SECONDS)
+            .build()
+            .newCall(request).execute().use { resp ->
+                if (!resp.isSuccessful) null else resp.body.string().orEmpty()
+            }
+    }.getOrNull()
+
+    private fun urlEncode(value: String): String =
+        runCatching { java.net.URLEncoder.encode(value, "UTF-8") }.getOrDefault(value)
 }

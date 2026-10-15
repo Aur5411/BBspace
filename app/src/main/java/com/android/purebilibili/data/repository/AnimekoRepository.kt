@@ -12,6 +12,7 @@ import com.android.purebilibili.data.model.animeko.AniDanmaku
 import com.android.purebilibili.data.model.animeko.AniRecommendPage
 import com.android.purebilibili.data.model.animeko.AniRelatedCharacter
 import com.android.purebilibili.data.model.animeko.AniReviewPage
+import com.android.purebilibili.data.model.animeko.AniEpisodeCommentPage
 import com.android.purebilibili.data.model.animeko.AniSeasonId
 import com.android.purebilibili.data.model.animeko.AniScheduleItem
 import com.android.purebilibili.data.model.animeko.AniStaffMember
@@ -144,6 +145,20 @@ object AnimekoRepository {
     /** 短评是否还有下一页。服务端 total 不可靠, 只看「本页是否满页」。 */
     fun hasMoreReviews(page: AniReviewPage, limit: Int = ANI_REVIEW_PAGE_SIZE): Boolean =
         page.items.size >= limit
+
+    /**
+     * ★ 2026-10: 单集吐槽 (Bangumi 吐槽箱聚合)。
+     *
+     * 与 [reviews] 同源(都在 api.animeko.org), 国内可达稳定。
+     * 播放页只做「看」: 展示作者/时间/正文/图片/已有回复, 不做交互。
+     */
+    suspend fun episodeComments(
+        episodeId: Long,
+        limit: Int = ANI_REVIEW_PAGE_SIZE,
+        offset: Int = 0,
+    ): AniResult<AniEpisodeCommentPage> = call("episodeComments/$episodeId") {
+        api.episodeComments(episodeId = episodeId, limit = limit, offset = offset)
+    }
 
     // ---------------------------------------------------------------
     // 首页 / 趋势

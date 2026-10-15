@@ -28,6 +28,7 @@ import com.android.purebilibili.data.repository.AniMediaSearchResult
 import com.android.purebilibili.data.repository.AniMediaSourceRepository
 import com.android.purebilibili.data.repository.ANI_BROWSE_PAGE_SIZE
 import com.android.purebilibili.data.repository.ANI_REVIEW_PAGE_SIZE
+import com.android.purebilibili.data.model.animeko.AniEpisodeCommentPage
 import com.android.purebilibili.data.repository.AniResult
 import com.android.purebilibili.data.repository.AnimekoLocalRepository
 import com.android.purebilibili.data.repository.AnimekoRepository
@@ -45,6 +46,9 @@ import kotlinx.coroutines.withContext
 
 /** 番剧首页各页签的单页条数(服务端单页上限 100, 取 30 兼顾首屏速度)。 */
 private const val ANI_BROWSE_PAGE_SIZE = 30
+
+/** 本地缓存候选的源 id（与 AniBuiltinSources.ID_LOCAL_CACHE 保持一致）。 */
+private const val LOCAL_CACHE_ID = "local_cache"
 
 /** 搜索结果状态。 */
 sealed interface AniSearchState {
@@ -509,6 +513,65 @@ class AnimeViewModel(application: Application) : AndroidViewModel(application) {
     private var detailJob: kotlinx.coroutines.Job? = null
     private var reviewsJob: kotlinx.coroutines.Job? = null
 
+    // ---------------------------------------------------------------
+    // ★ 2026-10: 播放页「本集吐槽」(Bangumi 单集吐槽箱)
+    //
+    // 与上面的 reviews(条目级短评)是两回事:
+    //   - reviews         : 整部番的短评, 显示在**详情页**(原有);
+    //   - episodeComments : 当前正在播的**这一集**的吐槽, 显示在**播放页**(新增)。
+    // 请求条数与详情页保持一致(同为 BGM_EP_COMMENT_PAGE_SIZE = 20)。
+    // ---------------------------------------------------------------
+    private val _episodeComments =
+        MutableStateFlow<BangumiEpisodeCommentState>(BangumiEpisodeCommentState.Idle)
+    val episodeComments: StateFlow<BangumiEpisodeCommentState> =
+        _episodeComments.asStateFlow()
+
+    private var episodeCommentsJob: kotlinx.coroutines.Job? = null
+
+    /** 已请求过的 episodeId，用于避免同一集重复请求。 */
+    private var episodeCommentsKey: Long? = null
+
+    /**
+     * 加载某一集的吐槽。
+     *
+     * @param episodeId animeko 的剧集 id(即 detail.episodes 里的 episodeId)
+     * @param force true = 忽略去重强制重载(重试按钮用)
+     */
+    fun loadEpisodeComments(episodeId: Long, force: Boolean = false) {
+        if (episodeId <= 0L) return
+        episodeCommentsJob?.cancel()
+        if (!force && episodeCommentsKey == episodeId &&
+            _episodeComments.value is BangumiEpisodeCommentState.Success
+        ) {
+            return
+        }
+        episodeCommentsKey = episodeId
+        episodeCommentsJob = viewModelScope.launch {
+            _episodeComments.value = BangumiEpisodeCommentState.Loading
+            when (val r = AnimekoRepository.episodeComments(
+                episodeId = episodeId,
+                limit = ANI_REVIEW_PAGE_SIZE,   // 与详情页短评条数一致
+            )) {
+                is AniResult.Ok -> _episodeComments.value =
+                    BangumiEpisodeCommentState.Success(r.value)
+                is AniResult.Err -> _episodeComments.value =
+                    BangumiEpisodeCommentState.Error(r.message)
+            }
+        }
+    }
+
+    /** 重试当前集吐槽。 */
+    fun retryEpisodeComments(episodeId: Long) {
+        loadEpisodeComments(episodeId, force = true)
+    }
+
+    /** 离开播放页时清空，避免残留上一部番的吐槽。 */
+    fun resetEpisodeComments() {
+        episodeCommentsJob?.cancel()
+        episodeCommentsKey = null
+        _episodeComments.value = BangumiEpisodeCommentState.Idle
+    }
+
     fun loadDetail(subjectId: Long) {
         detailJob?.cancel()
         reviewsJob?.cancel()
@@ -696,76 +759,94 @@ class AnimeViewModel(application: Application) : AndroidViewModel(application) {
      * ★ 应用户要求: 播放时默认**只搜在线源**(m3u8/mp4 直链),
      *   BT/磁力源在「下载」面板里单独检索 —— 避免换源列表被一堆
      *   播不了的种子刷屏。
+     *
+     * ★ 2026-10 开播提速(核心改动): 改为**流式收集** ——
+     *   1. 本地缓存(已下载本集)立即上屏, 秒开;
+     *   2. 其余在线源并发检索, **任何一个源返回就立刻更新**,
+     *      播放器拿到首个可播候选即开播, 不再等最慢的源;
+     *   3. 后续源的结果继续累积进换源面板, 供手动换源/切画质。
      */
     fun loadMediaSources(query: AniMediaQuery, onlySourceId: String? = null) {
         sourceJob?.cancel()
         sourceJob = viewModelScope.launch {
             _sourceState.value = AniSourceState.Loading
-            // ★ 番剧设置里的「优先源」(有序): 播放时先只搜这些源, 命中即播
             val preferred = AniSourcePreference.getPreferred(appContext)
-            var result = AniMediaSourceRepository.search(
+
+            // 1) 本地缓存: 不等网络, 立即给出候选(交给播放器优先播)
+            val localCandidate = buildLocalCacheCandidate(query)
+            if (localCandidate != null) {
+                _sourceState.value = AniSourceState.Success(
+                    AniMediaSearchResult(candidates = listOf(localCandidate))
+                )
+            }
+
+            val rank: (String) -> Int = { id ->
+                preferred.indexOf(id).let { if (it < 0) Int.MAX_VALUE else it }
+            }
+            fun merge(partial: AniMediaSearchResult): AniMediaSearchResult {
+                val ordered = if (preferred.isNotEmpty()) {
+                    AniMediaSearchResult(
+                        candidates = partial.candidates.sortedBy { c -> rank(c.sourceId) },
+                        sourceStatus = partial.sourceStatus,
+                    )
+                } else {
+                    partial
+                }
+                return if (localCandidate != null && ordered.candidates.none { it.sourceId == LOCAL_CACHE_ID }) {
+                    AniMediaSearchResult(
+                        candidates = listOf(localCandidate) + ordered.candidates,
+                        sourceStatus = ordered.sourceStatus,
+                    )
+                } else {
+                    ordered
+                }
+            }
+
+            val enabledIds = onlySourceId?.let { setOf(it) }
+                ?: preferred.toSet().takeIf { it.isNotEmpty() }
+                ?: com.android.purebilibili.data.model.animeko.AniBuiltinSources.defaultEnabledIds
+
+            var anyCandidate = localCandidate != null
+            AniMediaSourceRepository.searchStream(
                 query,
-                enabledIds = onlySourceId?.let { setOf(it) }
-                    ?: preferred.toSet().takeIf { it.isNotEmpty() }
-                    ?: com.android.purebilibili.data.model.animeko.AniBuiltinSources.defaultEnabledIds,
+                enabledIds = enabledIds,
                 kinds = setOf(AniMediaSourceKind.ONLINE),
-            )
-            // 优先源一个都没命中 -> 回退全量搜索(只在没有指定单源时才回退)
-            if (onlySourceId == null && preferred.isNotEmpty() && result.candidates.isEmpty()) {
-                result = AniMediaSourceRepository.search(
+            ).collect { partial ->
+                if (partial.candidates.isNotEmpty()) anyCandidate = true
+                _sourceState.value = AniSourceState.Success(merge(partial))
+            }
+
+            // 2) 优先源一个都没命中 -> 回退全量搜索(仅在未指定单源时)
+            if (onlySourceId == null && preferred.isNotEmpty() && !anyCandidate) {
+                AniMediaSourceRepository.searchStream(
                     query,
                     kinds = setOf(AniMediaSourceKind.ONLINE),
-                )
-            }
-            // 结果按「优先源顺序」排序(没勾优先源时保持原有的速度排序)
-            val orderedResult = if (preferred.isNotEmpty()) {
-                val rank: (String) -> Int = { id ->
-                    preferred.indexOf(id).let { if (it < 0) Int.MAX_VALUE else it }
+                ).collect { partial ->
+                    _sourceState.value = AniSourceState.Success(merge(partial))
                 }
-                AniMediaSearchResult(
-                    candidates = result.candidates.sortedBy { c -> rank(c.sourceId) },
-                    sourceStatus = result.sourceStatus,
-                )
-            } else {
-                result
             }
-            // 已下载到本机的集子: 插一条本地候选到最前, 点它即离线播放
-            val cached = if (query.episodeId > 0L) {
-                AnimekoLocalRepository.cacheForEpisode(appContext, query.episodeId)
-            } else {
-                null
-            }
-            // 缓存文件现在落在公共下载目录, 路径可能是 content:// URI(MediaStore),
-            // 也可能是 file:// ; 两种都直接交给播放器
-            val localPlayablePath = cached?.filePath?.takeIf { path ->
-                path.startsWith("content://") ||
-                    path.startsWith("file://") ||
-                    java.io.File(path).isFile
-            }
-            val withLocal = if (cached != null && localPlayablePath != null) {
-                val local = com.android.purebilibili.data.model.animeko.AniMediaCandidate(
-                    sourceId = "local_cache",
-                    sourceName = "本地缓存",
-                    kind = AniMediaSourceKind.LOCAL.name,
-                    url = if (localPlayablePath.startsWith("content://")) {
-                        localPlayablePath
-                    } else {
-                        "file://" + localPlayablePath
-                    },
-                    title = cached.subjectName.ifBlank { "已缓存本集" },
-                    quality = "离线",
-                    subtitleGroup = "本机",
-                    sizeBytes = cached.fileSizeBytes,
-                )
-                AniMediaSearchResult(
-                    candidates = listOf(local) + orderedResult.candidates,
-                    sourceStatus = orderedResult.sourceStatus,
-                )
-            } else {
-                orderedResult
-            }
-            _sourceState.value = AniSourceState.Success(withLocal)
         }
+    }
+
+    /** 构造「本地缓存」候选（已下载本集时用，供播放器优先播放）。 */
+    private suspend fun buildLocalCacheCandidate(
+        query: AniMediaQuery,
+    ): com.android.purebilibili.data.model.animeko.AniMediaCandidate? {
+        if (query.episodeId <= 0L) return null
+        val cached = AnimekoLocalRepository.cacheForEpisode(appContext, query.episodeId) ?: return null
+        val path = cached.filePath?.takeIf { p ->
+            p.startsWith("content://") || p.startsWith("file://") || java.io.File(p).isFile
+        } ?: return null
+        return com.android.purebilibili.data.model.animeko.AniMediaCandidate(
+            sourceId = LOCAL_CACHE_ID,
+            sourceName = "本地缓存",
+            kind = AniMediaSourceKind.LOCAL.name,
+            url = if (path.startsWith("content://")) path else "file://" + path,
+            title = cached.subjectName.ifBlank { "已缓存本集" },
+            quality = "离线",
+            subtitleGroup = "本机",
+            sizeBytes = cached.fileSizeBytes,
+        )
     }
 
     /** 「下载」面板: 检索 BT/磁力源(蜜柑 RSS 等)。 */

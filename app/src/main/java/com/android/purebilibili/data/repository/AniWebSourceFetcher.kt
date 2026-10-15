@@ -150,6 +150,10 @@ object AniWebSourceFetcher {
         // 1. 搜索页 → 找名字匹配的条目链接
         val searchHtml = httpGet(cfg.searchUrl.replace("{keyword}", urlEncode(keyword))) ?: return null
         val hits = extractLinks(searchHtml)
+            // ★ 2026-10: 搜索结果里会混入「分类页」(如 yinghuabb /vod/type/id/20.html、
+            //   dmmiku /vod/show/id/22.html), 它们页面很大但永远没有剧集。必须先剔除,
+            //   否则按「名字最短最优」会被分类页抢走, 导致该源判死。
+            .filter { (href, _) -> !isCategoryOrListingPage(href) }
             .filter { (_, text) -> nameMatches(text, subjectName) }
             // preferShorterName: 名字最短的最可能是正片条目
             .sortedBy { (_, text) -> text.length }
@@ -236,12 +240,39 @@ object AniWebSourceFetcher {
         else -> baseUrl.substringBeforeLast('/') + "/" + href
     }
 
+    /**
+     * 是否是「分类页 / 列表页」(不是具体某部番的详情页)。
+     *
+     * ★ 实测(maccms 系): 搜索结果里常混入这类链接, 页面体积大且名字与之相近,
+     *   会被「名字最短优先」选中, 之后在详情页永远找不到剧集 → 整个源白跑一趟。
+     *   典型形态:
+     *     - /index.php/vod/type/id/20.html      (分类)
+     *     - /index.php/vod/show/id/22.html      (筛选)
+     *     - /vod/show/...  /vod/type/...  /list/...  /vodsearch/...
+     *   反面(真详情页): /index.php/vod/detail/id/7662.html、/voddetail/xxx.html。
+     */
+    private fun isCategoryOrListingPage(href: String): Boolean {
+        val lower = href.lowercase()
+        if (lower.contains("vod/detail") || lower.contains("voddetail") ||
+            lower.contains("vod/play") || lower.contains("vodplay")
+        ) {
+            return false
+        }
+        return Regex("/(?:vod/)?(?:type|show|list|class|vodshow|vodtype)/").containsMatchIn(lower) ||
+            Regex("/search(?:/|\\.|$)").containsMatchIn(lower) ||
+            lower.contains("vodsearch")
+    }
+
     /** 播放链接特征: vodplay/play/-数字-/ep 等路径, 且不是详情页/搜索页。 */
     private fun isPlayLink(href: String, text: String): Boolean {
         val lower = href.lowercase()
-        if (lower.contains("detail") || lower.contains("search") || lower.contains("index.php/vod")) {
-            return false
+        if (lower.contains("search") || lower.contains("vodsearch")) return false
+        // ★ 2026-10: 不能一律排除 index.php/vod —— 多数 maccms 站的播放页正是
+        //   /index.php/vod/play/id/xxx/sid/1/nid/1.html。只排除其中的 detail/type/show。
+        if (lower.contains("index.php/vod")) {
+            return lower.contains("vod/play") || lower.contains("vodplay")
         }
+        if (lower.contains("detail")) return false
         return lower.contains("play") || lower.contains("vodplay") ||
             Regex("/ep\\d+").containsMatchIn(lower) ||
             Regex("-\\d+-\\d+\\.html").containsMatchIn(lower) ||

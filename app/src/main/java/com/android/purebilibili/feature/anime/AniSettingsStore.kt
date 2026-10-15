@@ -66,6 +66,8 @@ data class AniSettings(
     val showStaff: Boolean = true,
     /** 详情页是否展示「短评」区块。 */
     val showReviews: Boolean = true,
+    /** ★ 2026-10: 播放页是否展示「本集吐槽」(Bangumi 单集吐槽箱, 含图片与回复)。 */
+    val showEpisodeComments: Boolean = true,
     val searchResultLimit: Int = 30,
     val coverBlurEnabled: Boolean = false,
     // ── 数据 ──
@@ -119,6 +121,7 @@ object AniSettingsStore {
     private const val KEY_AUTO_CHARACTERS = "auto_load_characters"
     private const val KEY_SHOW_STAFF = "show_staff_section"
     private const val KEY_SHOW_REVIEWS = "show_reviews_section"
+    private const val KEY_SHOW_EP_COMMENTS = "show_episode_comments"
     private const val KEY_SEARCH_LIMIT = "search_result_limit"
     private const val KEY_COVER_BLUR = "cover_blur_enabled"
     private const val KEY_RECORD_HISTORY = "record_watch_history"
@@ -185,6 +188,7 @@ object AniSettingsStore {
             autoLoadCharacters = p.getBoolean(KEY_AUTO_CHARACTERS, defaults.autoLoadCharacters),
             showStaff = p.getBoolean(KEY_SHOW_STAFF, defaults.showStaff),
             showReviews = p.getBoolean(KEY_SHOW_REVIEWS, defaults.showReviews),
+            showEpisodeComments = p.getBoolean(KEY_SHOW_EP_COMMENTS, defaults.showEpisodeComments),
             searchResultLimit = p.getInt(KEY_SEARCH_LIMIT, defaults.searchResultLimit)
                 .coerceIn(AniSettings.SEARCH_LIMIT_RANGE),
             coverBlurEnabled = p.getBoolean(KEY_COVER_BLUR, defaults.coverBlurEnabled),
@@ -216,6 +220,7 @@ object AniSettingsStore {
             .putBoolean(KEY_AUTO_CHARACTERS, value.autoLoadCharacters)
             .putBoolean(KEY_SHOW_STAFF, value.showStaff)
             .putBoolean(KEY_SHOW_REVIEWS, value.showReviews)
+            .putBoolean(KEY_SHOW_EP_COMMENTS, value.showEpisodeComments)
             .putInt(KEY_SEARCH_LIMIT, value.searchResultLimit)
             .putBoolean(KEY_COVER_BLUR, value.coverBlurEnabled)
             .putBoolean(KEY_RECORD_HISTORY, value.recordWatchHistory)

@@ -41,6 +41,7 @@ import com.android.purebilibili.core.ui.AppSpacingTokens
 import com.android.purebilibili.core.ui.components.AppButton
 import com.android.purebilibili.core.ui.components.AppIcon
 import com.android.purebilibili.core.ui.components.AppIconButton
+import com.android.purebilibili.core.ui.components.AppOutlinedTextField
 import com.android.purebilibili.core.ui.components.AppText
 import kotlinx.coroutines.launch
 
@@ -57,9 +58,29 @@ fun AniSourceManagerSheet(onDismiss: () -> Unit) {
     var testing by remember { mutableStateOf(false) }
     val latencyLock = remember { Any() }
 
+    // ★ 2026-10: 按番剧名逐个源做「搜索测试」
+    var testKeyword by remember { mutableStateOf("") }
+    var searchResults by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var searching by remember { mutableStateOf(false) }
+
     fun persist(next: List<String>) {
         preferred = next
         AniSourcePreference.setPreferred(context, next)
+    }
+
+    fun testSearchByKeyword() {
+        val kw = testKeyword.trim()
+        if (kw.isEmpty()) return
+        scope.launch {
+            searching = true
+            searchResults = emptyMap()
+            AniSourcePreference.probeSearch(context, kw) { id, text ->
+                synchronized(latencyLock) {
+                    searchResults = searchResults + (id to text)
+                }
+            }
+            searching = false
+        }
     }
 
     fun testAll() {
@@ -73,6 +94,33 @@ fun AniSourceManagerSheet(onDismiss: () -> Unit) {
                 }
             }
             testing = false
+        }
+    }
+
+    /**
+     * ★ 2026-10 新增: 一键测速 + 自动勾选「延迟最低的 N 个源」。
+     *
+     * 行为: 测完全部源 -> 丢弃不可达(-1) -> 按延迟升序取前 10 个
+     *       -> 直接写成优先源列表(顺序即延迟顺序, 播放时最快的最先试)。
+     */
+    fun testAndPickFastest() {
+        scope.launch {
+            testing = true
+            latencies = emptyMap()
+            val measured = LinkedHashMap<String, Long>()
+            AniSourcePreference.measureAll(context) { id, ms ->
+                synchronized(latencyLock) {
+                    measured[id] = ms
+                    latencies = latencies + (id to ms)
+                }
+            }
+            testing = false
+            val fastest = measured.entries
+                .filter { it.value >= 0L }        // 排除不可达
+                .sortedBy { it.value }            // 延迟升序
+                .take(10)                          // 固定勾选最快的 10 个
+                .map { it.key }
+            if (fastest.isNotEmpty()) persist(fastest)
         }
     }
 
@@ -114,6 +162,20 @@ fun AniSourceManagerSheet(onDismiss: () -> Unit) {
                         style = MaterialTheme.typography.labelMedium,
                     )
                 }
+                // ★ 2026-10: 一键测速 + 自动勾选延迟最低的 N 个源
+                AppButton(
+                    onClick = { if (!testing) testAndPickFastest() },
+                    enabled = !testing,
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.padding(start = 6.dp),
+                ) {
+                    AppText(
+                        text = "一键优选",
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                }
             }
             AppText(
                 text = "勾选优先使用的源，顺序即搜索优先级。播放番剧时先搜这些源，没结果再自动全量搜索。",
@@ -121,6 +183,35 @@ fun AniSourceManagerSheet(onDismiss: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(vertical = 6.dp),
             )
+
+            // ★ 2026-10: 输入番剧名 -> 逐个源实测「能不能搜到」
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                AppOutlinedTextField(
+                    value = testKeyword,
+                    onValueChange = { testKeyword = it },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                    label = { AppText("番剧名", style = MaterialTheme.typography.labelSmall) },
+                )
+                AppButton(
+                    onClick = { if (!searching) testSearchByKeyword() },
+                    enabled = !searching && testKeyword.isNotBlank(),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                ) {
+                    AppText(
+                        text = if (searching) "搜索中…" else "搜索测试",
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                }
+            }
 
             LazyColumn(
                 modifier = Modifier
@@ -150,7 +241,12 @@ fun AniSourceManagerSheet(onDismiss: () -> Unit) {
                                 maxLines = 1,
                             )
                             AppText(
-                                text = "${source.kindLabel} · ${latencyLabel(latencies[source.id])}",
+                                text = buildString {
+                                    append(source.kindLabel)
+                                    append(" · ")
+                                    append(latencyLabel(latencies[source.id]))
+                                    searchResults[source.id]?.let { append(" · ").append(it) }
+                                },
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -215,7 +311,12 @@ fun AniSourceManagerSheet(onDismiss: () -> Unit) {
                                 maxLines = 1,
                             )
                             AppText(
-                                text = "${source.kindLabel} · ${latencyLabel(latencies[source.id])}",
+                                text = buildString {
+                                    append(source.kindLabel)
+                                    append(" · ")
+                                    append(latencyLabel(latencies[source.id]))
+                                    searchResults[source.id]?.let { append(" · ").append(it) }
+                                },
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )

@@ -21,7 +21,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.joinAll
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.channelFlow
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.net.URLEncoder
@@ -65,6 +69,94 @@ object AniMediaSourceRepository {
         .callTimeout(12, TimeUnit.SECONDS)
         .retryOnConnectionFailure(false)
         .build()
+
+    /**
+     * ★ 2026-10 流式检索（开播提速核心）。
+     *
+     * 与 [search] 的区别：不再 `awaitAll()` 等所有源返回，而是**每个源一完成就
+     * 立刻 emit 一次累积结果**。调用方（播放器）因此可以在「最快的源」返回时
+     * 立即开播，其余源在后台继续补充，用于后续的换源/切画质。
+     *
+     * 实测：18 个在线源里最慢的可到 10s+，原先「等齐再播」会把首帧拖到十几秒；
+     * 改为流式后首播时间 ≈ 最快源耗时（通常 1~3s）。
+     *
+     * 排序：每次 emit 用「当前已知的站点延迟」排序（测速在后台并行，不阻塞首播）；
+     * 测速结果到达后，后续 emit 的排序会随之改善。
+     */
+    fun searchStream(
+        query: AniMediaQuery,
+        enabledIds: Set<String> = AniBuiltinSources.defaultEnabledIds,
+        kinds: Set<AniMediaSourceKind>? = null,
+    ): Flow<AniMediaSearchResult> = channelFlow {
+        val sources = (query.sources.ifEmpty { AniBuiltinSources.builtins })
+            .filter { it.enabled && it.id in enabledIds }
+            .filter { kinds == null || it.kindEnum in kinds }
+
+        if (sources.isEmpty()) {
+            send(AniMediaSearchResult(emptyList(), emptyList()))
+            return@channelFlow
+        }
+
+        val collected = mutableListOf<AniMediaCandidate>()
+        val statuses = mutableListOf<AniSourceStatus>()
+        // 延迟映射: 后台测速完成后写入, 供后续排序使用（可变引用, 线程可见）
+        val latencyRef = java.util.concurrent.atomic.AtomicReference<Map<String, Long>>(emptyMap())
+
+        // 后台测速, 不阻塞首播
+        val latencyJob = launch(Dispatchers.IO) {
+            val webCfgs = sources
+                .filter { it.kindEnum == AniMediaSourceKind.ONLINE }
+                .mapNotNull { AniWebSourceCatalog.byId[it.id] }
+            if (webCfgs.isNotEmpty()) {
+                latencyRef.set(runCatching { AniWebSourceFetcher.probeLatencies(webCfgs) }
+                    .getOrDefault(emptyMap()))
+            }
+        }
+
+        coroutineScope {
+            sources.map { source ->
+                launch(Dispatchers.IO) {
+                    val list = runCatching { fetchCandidates(source, query) }
+                        .onFailure { e -> Logger.w(TAG, "源 ${source.name} 失败: ${e.message}") }
+                        .getOrDefault(emptyList())
+                    val snapshot: AniMediaSearchResult = synchronized(collected) {
+                        collected += list
+                        statuses += if (list.isNotEmpty() || source.kindEnum != AniMediaSourceKind.ONLINE) {
+                            AniSourceStatus(source.id, source.name, ok = true, count = list.size)
+                        } else {
+                            AniSourceStatus(
+                                source.id, source.name, ok = false, count = 0,
+                                message = "该站没有这一集",
+                            )
+                        }
+                        val lat = latencyRef.get()
+                        AniMediaSearchResult(
+                            candidates = collected.toList().sortedWith(
+                                compareBy<AniMediaCandidate> { c -> lat[c.sourceId] ?: Long.MAX_VALUE }
+                                    .thenByDescending { it.seeders }
+                                    .thenByDescending { qualityRank(it.quality) }
+                                    .thenByDescending { it.sizeBytes }
+                            ),
+                            sourceStatus = statuses.toList(),
+                        )
+                    }
+                    // 每完成一个源就推一次, 首个可播候选随即触发播放
+                    send(snapshot)
+                }
+            }.joinAll()
+        }
+        latencyJob.join()
+    }
+
+    /** 单个源的检索分发（[search] 与 [searchStream] 共用）。 */
+    private suspend fun fetchCandidates(
+        source: AniMediaSource,
+        query: AniMediaQuery,
+    ): List<AniMediaCandidate> = when (source.kindEnum) {
+        AniMediaSourceKind.ONLINE -> fetchOnlineCandidates(source, query)
+        AniMediaSourceKind.BT, AniMediaSourceKind.CUSTOM -> fetchRssCandidates(source, query)
+        AniMediaSourceKind.LOCAL -> emptyList()
+    }
 
     /**
      * 按查询条件到所有启用的源里找候选资源。
@@ -111,18 +203,7 @@ object AniMediaSourceRepository {
         val results = coroutineScope {
             orderedSources.map { source ->
                 async(Dispatchers.IO) {
-                    val fetch: suspend () -> List<AniMediaCandidate> = {
-                        when (source.kindEnum) {
-                            AniMediaSourceKind.ONLINE -> fetchOnlineCandidates(source, query)
-
-                            // BT / 自定义源：解析 RSS，得到种子/磁力或自定义规则给出的地址。
-                            AniMediaSourceKind.BT, AniMediaSourceKind.CUSTOM ->
-                                fetchRssCandidates(source, query)
-
-                            AniMediaSourceKind.LOCAL -> emptyList()
-                        }
-                    }
-                    source to (runCatching { fetch() }
+                    source to (runCatching { fetchCandidates(source, query) }
                         .onFailure { e -> Logger.w(TAG, "源 ${source.name} 失败: ${e.message}") }
                         .getOrDefault(emptyList()))
                 }
@@ -258,7 +339,7 @@ object AniMediaSourceRepository {
      *
      * 返回的地址是 m3u8 直链，media3 可直接播放。
      */
-    private fun fetchOnlineCatalogCandidates(
+    private suspend fun fetchOnlineCatalogCandidates(
         source: AniMediaSource,
         query: AniMediaQuery,
     ): List<AniMediaCandidate> {
@@ -268,56 +349,63 @@ object AniMediaSourceRepository {
             ?: return emptyList()
 
         // 番剧名可能带「！」「(TV)」「第 2 季」等，采集站搜不到；
-        // 依次用「原文 → 简化名 → 首个词」试，命中即停。
+        // 依次用「原文 → 简化名 → 首个词」试。
         val keywords = AniOnlineCatalog.searchKeywords(query.subjectName)
         if (keywords.isEmpty()) return emptyList()
 
-        var items: List<AniOnlineCatalog.CatalogItem> = emptyList()
-        var lastError: String? = null
-        val startedNanos = System.nanoTime()
-        for (keyword in keywords) {
-            // 总时限: 超过 25s 放弃该源, 不拖累其它源的结果上屏
-            if (System.nanoTime() - startedNanos > SOURCE_DEADLINE_MS * 1_000_000L) {
-                Logger.w(TAG, "源 ${source.name} 检索超时(${SOURCE_DEADLINE_MS / 1000}s), 放弃剩余关键字")
-                break
-            }
-            val request = Request.Builder()
-                .url(AniOnlineCatalog.detailUrl(baseUrl, keyword))
-                .header("User-Agent", MEDIA_SOURCE_USER_AGENT)
-                .header("Accept", "application/json, text/plain, */*")
-                .build()
-            val body = try {
-                client.newCall(request).execute().use { resp ->
-                    if (!resp.isSuccessful) error("HTTP ${resp.code}")
-                    resp.body.string().orEmpty()
+        // ★ 2026-10 提速: 关键词检索从「串行逐个试」改为「并发一起试」。
+        //   原先最坏要等 3 次请求串行跑完(每次可能数秒)才确定无结果；并发后
+        //   耗时 ≈ 最快命中那次, 末位淘汰式的多余请求不再串成一条长尾。
+        val attempts: List<Result<List<AniOnlineCatalog.CatalogItem>>> = coroutineScope {
+            keywords.map { keyword ->
+                async(Dispatchers.IO) {
+                    runCatching {
+                        val request = Request.Builder()
+                            .url(AniOnlineCatalog.detailUrl(baseUrl, keyword))
+                            .header("User-Agent", MEDIA_SOURCE_USER_AGENT)
+                            .header("Accept", "application/json, text/plain, */*")
+                            .build()
+                        client.newCall(request).execute().use { resp ->
+                            if (!resp.isSuccessful) error("HTTP ${resp.code}")
+                            AniOnlineCatalog.parseDetail(resp.body.string().orEmpty())
+                        }
+                    }
                 }
-            } catch (e: Exception) {
-                lastError = e.message ?: "请求失败"
-                continue
-            }
-            items = AniOnlineCatalog.parseDetail(body)
-            if (items.isNotEmpty()) break
+            }.awaitAll()
         }
+        val items = attempts.firstOrNull { it.getOrNull()?.isNotEmpty() == true }
+            ?.getOrNull()
+            ?: emptyList()
         if (items.isEmpty()) {
-            // 三次都没结果：把原因抛出去，让「换源」面板能显示具体是哪一步失败
-            error(lastError ?: "未搜到该番剧（已尝试 ${keywords.size} 个关键字）")
+            // 全部没结果：把原因抛出去，让「换源」面板能显示具体是哪一步失败
+            val reason = attempts.firstNotNullOfOrNull { it.exceptionOrNull()?.message }
+            error(reason ?: "未搜到该番剧（已尝试 ${keywords.size} 个关键字）")
         }
 
         val wantEpisode = AniOnlineCatalog.parseEpisodeNumber(query.episodeSort)
         val best = AniOnlineCatalog.pickBestItem(items, query.subjectName, wantEpisode)
             ?: return emptyList()
+        // ★ 2026-10: 校验条目名, 防止「点这部却播另一部」——命中条目的名字与目标番剧名
+        //   对不上时直接跳过该源(宁缺勿错), 让上层继续尝试下一个源。
+        if (!AniOnlineCatalog.isNameMatched(best.name, query.subjectName)) {
+            Logger.w(TAG, "源 ${source.id} 命中「${best.name}」与目标「${query.subjectName}」不匹配, 跳过")
+            return emptyList()
+        }
         val entries = AniOnlineCatalog.splitPlayUrls(best.playUrl)
         // 该源没有目标集时不产出候选（宁缺勿错，避免播成别的集）
         val picked = AniOnlineCatalog.pickEpisode(entries, query.episodeSort, query.episodeName)
             ?: return emptyList()
 
         val groupName = AniOnlineCatalog.firstPlayGroupName(best.playFrom)
+        // ★ 2026-10: 部分采集源(红牛/虎牙/Unity/极速/金鹰/豪华等)给的是 /share/xxx「分享页」,
+        //   不是一个能播的直链 —— 这里做二次解析, 从页面 JS 里还原出真正的 m3u8。
+        val mediaUrl = resolveSharePageToMediaUrl(picked.url, baseUrl)
         return listOf(
             AniMediaCandidate(
                 sourceId = source.id,
                 sourceName = source.name,
                 kind = AniMediaSourceKind.ONLINE.name,
-                url = picked.url,
+                url = mediaUrl,
                 title = buildString {
                     append(best.name)
                     if (picked.label.isNotBlank()) append(" · ").append(picked.label)
@@ -326,6 +414,85 @@ object AniMediaSourceRepository {
                 subtitleGroup = source.name,
             )
         )
+    }
+
+    // ---------------------------------------------------------------
+    // 「分享页」型源的二次解析（maccms share 页 -> 真 m3u8）
+    // ---------------------------------------------------------------
+
+    /**
+     * ★ 2026-10 新增：把 maccms 的「分享页」还原成可播放直链。
+     *
+     * 背景：部分采集源（红牛 / 虎牙 / Unity / 极速 / 金鹰 / 豪华 / 非凡系等）的
+     * `vod_play_url` 给的不是 m3u8，而是一个 `/share/xxxx` 的 **分享页(HTML)**，
+     * 真正的播放地址藏在页面里的 JS 变量中，例如：
+     *   - 非凡:  `const url = "/20260109/49311_xxx/index.m3u8?sign=..."`
+     *   - Unity: `var main = "/20260109/4n63VIEf/index.m3u8"`
+     *   - 通用:  `playlist = '[{"url":"/xxx/index.m3u8"}]'`
+     * 旧实现直接把这个 HTML 地址当视频丢给播放器 -> 必然黑屏/连不上。
+     * 这里请求该页面并把相对地址还原成绝对 m3u8；解析失败则原样返回（退化为旧行为）。
+     */
+    private fun resolveSharePageToMediaUrl(url: String, referer: String): String {
+        val lower = url.lowercase()
+        // 已经是直链（含 .m3u8 / .mp4）直接返回，不做多余请求
+        if (lower.contains(".m3u8") || lower.contains(".mp4")) return url
+        val html = try {
+            val request = Request.Builder()
+                .url(url)
+                .header("User-Agent", MEDIA_SOURCE_USER_AGENT)
+                .header("Referer", referer)
+                .build()
+            client.newCall(request).execute().use { resp ->
+                if (!resp.isSuccessful) return url
+                resp.body.string().orEmpty()
+            }
+        } catch (e: Exception) {
+            Logger.w(TAG, "分享页请求失败($url): ${e.message}")
+            return url
+        }
+        if (html.isBlank()) return url
+        val media = extractSharePageMediaUrl(html, url) ?: return url
+        Logger.d(TAG, "分享页解析出播放地址: $media")
+        return media
+    }
+
+    /** 从分享页 HTML 里抠出 m3u8/mp4 地址并转为绝对路径。 */
+    private fun extractSharePageMediaUrl(html: String, pageUrl: String): String? {
+        for (regex in SHARE_MEDIA_REGEXES) {
+            val m = regex.find(html) ?: continue
+            val raw = m.groupValues.getOrNull(1)?.takeIf { it.isNotBlank() } ?: m.value
+            if (raw.isBlank()) continue
+            return absolutizeUrl(raw, pageUrl)
+        }
+        return null
+    }
+
+    /** 分享页里常见的播放地址声明顺序（越靠前越可信）。 */
+    private val SHARE_MEDIA_REGEXES = listOf(
+        Regex("""(?:const|var|let)\s+url\s*=\s*["']([^"']+?\.(?:m3u8|mp4)[^"']*)["']""", RegexOption.IGNORE_CASE),
+        Regex("""(?:const|var|let)\s+main\s*=\s*["']([^"']+?\.(?:m3u8|mp4)[^"']*)["']""", RegexOption.IGNORE_CASE),
+        Regex("""["']url["']\s*:\s*["']([^"']+?\.(?:m3u8|mp4)[^"']*)["']""", RegexOption.IGNORE_CASE),
+        Regex("""["'](https?://[^"']+?\.(?:m3u8|mp4)[^"']*)["']""", RegexOption.IGNORE_CASE),
+        Regex("""["'](/[^"']*?\.(?:m3u8|mp4)(?:\?[^"']*)?)["']""", RegexOption.IGNORE_CASE),
+        Regex("""(https?://[^"'<>\s]+?\.(?:m3u8|mp4)[^"'<>\s]*)""", RegexOption.IGNORE_CASE),
+    )
+
+    /** 相对地址 -> 绝对地址（基于分享页自身的 host）。 */
+    private fun absolutizeUrl(path: String, base: String): String = when {
+        path.startsWith("http") -> path
+        path.startsWith("//") -> "https:$path"
+        path.startsWith("/") -> {
+            val schemeEnd = base.indexOf("://")
+            if (schemeEnd < 0) {
+                path
+            } else {
+                val hostStart = schemeEnd + 3
+                val slash = base.indexOf('/', hostStart)
+                val hostEnd = if (slash < 0) base.length else slash
+                base.substring(0, hostEnd) + path
+            }
+        }
+        else -> base.substringBeforeLast('/') + "/" + path
     }
 
     /**

@@ -130,8 +130,19 @@ android {
         targetSdk = 37
         // 版本：语义化 X.Y.Z（MAJOR.MINOR.PATCH）+ versionCode 单调 +1
         // 规范：docs/wiki/VERSIONING.md · 更新日志：CHANGELOG.md
-        versionCode = 53000
-        versionName = "5.3.0"
+        // 5.4.0: 番剧源更新(修 share 页解析/剔除失效源) + 开播提速 + 直播页弹幕区 & SC 顶部悬浮
+        // 5.4.1: 一键优选源数量 5 -> 10
+        // 5.4.2: 播放页新增「本集吐槽」(Bangumi 单集吐槽, 含图片/回复, 纯展示)
+        // 5.4.3: 一键优选源数量改为可自定义(设置里调)
+        // 5.4.4: 番剧页右上角新增「重置搜索」按钮
+        // 5.4.5: 修复直播间弹幕不显示(恢复互动面板) + 番剧播放页评论可滚动
+        // 5.4.6: 直播间互动面板只留「聊天」, 隐藏 SC/投票 tab
+        // 5.4.7: 番剧播放页单集吐槽内联渲染 Bangumi 表情 (bgmN) (内置125个表情资源)
+        // 5.4.8: 换源检索校验条目名, 防止播错片(点这部播另一部)
+        // 5.4.9: 播放页单集吐槽站点不可用时默认隐藏(不显示提示)
+        //        同 applicationId + 同签名 + versionCode 递增 => 可直接覆盖安装旧版
+        versionCode = 54009
+        versionName = "5.4.9"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

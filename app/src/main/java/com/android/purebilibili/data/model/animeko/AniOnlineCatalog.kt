@@ -42,12 +42,19 @@ object AniOnlineCatalog {
     const val ID_ZUIDA = "online_zuida"
     const val ID_HUYA = "online_huya"
     const val ID_UNITY = "online_unity"
+    // ---- 2026-10 实测新增(见 README「番剧源实测」) ----
+    const val ID_JSZY = "online_jszy"
+    const val ID_P2100 = "online_p2100"
+    const val ID_JINYING = "online_jinying"
+    const val ID_HHZY = "online_hhzy"
+    const val ID_MDZY = "online_mdzy"
+    const val ID_IQIYIZY = "online_iqiyizy"
 
     val sources: List<AniOnlineCatalogSource> = listOf(
         AniOnlineCatalogSource(ID_LZIAPI, "量子资源", "https://cj.lziapi.com"),
         AniOnlineCatalogSource(ID_FFZY, "非凡资源", "https://api.ffzyapi.com"),
         AniOnlineCatalogSource(ID_360ZY, "360资源", "https://360zy.com"),
-        // ---- 以下为 2026-09 实测新增(200 OK 且含 m3u8 播放串, 见 _probe_maccms.py) ----
+        // ---- 2026-09 实测新增(200 OK 且含 m3u8 播放串, 见 _probe_maccms.py) ----
         AniOnlineCatalogSource(ID_BFZY, "暴风资源", "https://bfzyapi.com"),
         AniOnlineCatalogSource(ID_HNNIU, "红牛资源", "https://www.hongniuzy2.com"),
         AniOnlineCatalogSource(ID_ZUIDA, "最大资源", "https://api.zuidapi.com"),
@@ -56,6 +63,22 @@ object AniOnlineCatalog {
         // ---- 2026-10 直连实测新增镜像(主域在某些网络下慢/被墙, 镜像另走一条线路) ----
         AniOnlineCatalogSource(ID_FFZY5, "非凡资源·镜像", "https://ffzy5.tv"),
         AniOnlineCatalogSource(ID_HNNIU3, "红牛资源·镜像", "https://www.hongniuzy3.com"),
+        // ---- 2026-10 「孤独摇滚」专项实测新增(ac=detail&wd= 均直出 m3u8, 延迟 <2.5s) ----
+        AniOnlineCatalogSource(ID_JSZY, "极速资源", "https://jszyapi.com"),
+        AniOnlineCatalogSource(ID_P2100, "飘零资源", "https://p2100.net"),
+        AniOnlineCatalogSource(ID_JINYING, "金鹰资源", "https://jinyingzy.com"),
+        AniOnlineCatalogSource(ID_HHZY, "豪华资源", "https://hhzyapi.com"),
+        AniOnlineCatalogSource(ID_MDZY, "魔都资源", "https://www.mdzyapi.com"),
+        AniOnlineCatalogSource(ID_IQIYIZY, "爱奇艺资源", "https://iqiyizyapi.com"),
+        // ★ 2026-10 实测淘汰(不再保留):
+        //   - 天堂资源 api.vodtv.cc / 天空资源 api.tiankongapi.com / 快云 kuaiyun-api.com
+        //     / 樱花资源 api.yhzyapi.com / 奶香 naixiangapi.com / ikun ikunzyapi.com
+        //     → URLError(域名不解析或连接被拒)
+        //   - 索尼 suoniapi.com / 无尽 api.wujinapi.me / 新浪 api.xinlangapi.com
+        //     → HTTP 403(反爬)
+        //   - 快看 kuaikan-api.com → HTTP 404(接口路径已变)
+        //   - 天涯 tyyszyapi.com / 卧龙 collect.wolongzyw.com / 闪电 sdzyapi.com
+        //     / 茅台 caiji.maotaizy.cc → 返回非 JSON(接口不可用于换源)
     )
 
     val byId: Map<String, AniOnlineCatalogSource> = sources.associateBy { it.id }
@@ -199,6 +222,26 @@ object AniOnlineCatalog {
     /** 归一化番剧名，用于打分比较：去空白/标点、统一小写。 */
     fun normalizeName(raw: String): String = raw.trim().lowercase()
         .replace(Regex("[\\s\\p{Punct}！？。·・：:；;，,、（）()\\[\\]【】『』「」]"), "")
+
+    /**
+     * ★ 2026-10: 校验「源站返回的条目名」是否与目标番剧名匹配, 防止播错片。
+     *
+     * 规则(由宽到严兜底, 避免误杀):
+     * 1. 归一化后完全相等 -> 匹配;
+     * 2. 互相包含(含「第N季」这类后缀) -> 匹配;
+     * 3. 目标名去掉「第N季/部/期」核心词后, 与候选名互相包含 -> 匹配;
+     * 否则视为不匹配(可能命中了同名/不同版本/另一部作品)。
+     */
+    fun isNameMatched(candidateName: String, subjectName: String): Boolean {
+        val c = normalizeName(candidateName)
+        val s = normalizeName(subjectName)
+        if (c.isBlank() || s.isBlank()) return false
+        if (c == s) return true
+        if (c.contains(s) || s.contains(c)) return true
+        val sCore = s.replace(Regex("第[0-9零一二三四五六七八九十百]+[季期部]"), "").trim()
+        if (sCore.isNotBlank() && (c.contains(sCore) || sCore.contains(c))) return true
+        return false
+    }
 
     /**
      * 搜索结果里多条同名/近名条目时，挑最可能是「正片」的那条。
