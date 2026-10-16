@@ -150,8 +150,6 @@ fun AnimePlayerScreen(
     // 用 MutableState 持有，保证 Player.Listener 里读到的一直是最新值。
     val failoverCandidates = remember { mutableStateOf<List<AniMediaCandidate>>(emptyList()) }
     val failoverIndex = remember { mutableIntStateOf(0) }
-    // 自动换源后短暂提示，让用户知道发生了什么
-    var failoverNotice by remember { mutableStateOf<String?>(null) }
     var showSourceSheet by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var positionMillis by remember { mutableLongStateOf(0L) }
@@ -344,7 +342,6 @@ fun AnimePlayerScreen(
         failoverIndex.intValue = nextIndex
         currentSourceName = next.sourceName
         errorMessage = null
-        failoverNotice = "已自动切换到「${next.sourceName}」"
         currentUrl = next.url
     }
 
@@ -588,14 +585,6 @@ fun AnimePlayerScreen(
         }
     }
 
-    // 自动换源提示 3 秒后自动消失
-    LaunchedEffect(failoverNotice) {
-        if (failoverNotice != null) {
-            kotlinx.coroutines.delay(3000)
-            failoverNotice = null
-        }
-    }
-
     AppScaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
@@ -816,27 +805,6 @@ fun AnimePlayerScreen(
                             text = errorMessage ?: "",
                             color = Color.White,
                             style = MaterialTheme.typography.bodyMedium,
-                        )
-                    }
-                }
-
-                // 自动换源提示（短暂显示，不挡播放）
-                failoverNotice?.let { notice ->
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.TopCenter,
-                    ) {
-                        AppText(
-                            text = notice,
-                            color = Color.White,
-                            style = MaterialTheme.typography.labelMedium,
-                            modifier = Modifier
-                                .padding(top = 12.dp)
-                                .background(
-                                    Color.Black.copy(alpha = 0.55f),
-                                    RoundedCornerShape(8.dp),
-                                )
-                                .padding(horizontal = 10.dp, vertical = 4.dp),
                         )
                     }
                 }

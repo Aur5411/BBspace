@@ -3571,18 +3571,17 @@ fun AppNavigation(
                                 val ownerName = likedVideosKey?.ownerName?.takeIf { it.isNotBlank() }.orEmpty()
                                 val context = androidx.compose.ui.platform.LocalContext.current
                                 val application = context.applicationContext as android.app.Application
-                                val likedVideosViewModel: LikedVideosViewModel = if (targetMid != null) {
-                                    viewModel(
-                                        key = "liked_videos_$targetMid",
-                                        factory = com.android.purebilibili.feature.list.LikedVideosViewModelFactory(
-                                            application = application,
-                                            targetMid = targetMid,
-                                            ownerName = ownerName
-                                        )
+                                // [修复] 必须显式传工厂：LikedVideosViewModel 的首参是 Application、
+                                // 其余参数虽有 Kotlin 默认值，但不会生成仅 (Application) 的构造，
+                                // 默认工厂反射找不到构造会直接闪退（「我的点赞」就是不传 mid 的分支）。
+                                val likedVideosViewModel: LikedVideosViewModel = viewModel(
+                                    key = if (targetMid != null) "liked_videos_$targetMid" else "liked_videos_me",
+                                    factory = com.android.purebilibili.feature.list.LikedVideosViewModelFactory(
+                                        application = application,
+                                        targetMid = targetMid,
+                                        ownerName = ownerName
                                     )
-                                } else {
-                                    viewModel()
-                                }
+                                )
                                 val sourceRoute = (key as? BiliPaiNavKey)?.toLegacyRoute()
                                     ?: ScreenRoutes.LikedVideos.route
                                 CommonListScreen(

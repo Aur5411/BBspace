@@ -141,8 +141,8 @@ android {
         // 5.4.8: 换源检索校验条目名, 防止播错片(点这部播另一部)
         // 5.4.9: 播放页单集吐槽站点不可用时默认隐藏(不显示提示)
         //        同 applicationId + 同签名 + versionCode 递增 => 可直接覆盖安装旧版
-        versionCode = 54009
-        versionName = "5.4.9"
+        versionCode = 55000
+        versionName = "5.5.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
